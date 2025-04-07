@@ -86,15 +86,16 @@
                                     {% if project.expenses > project.budget %}Over Budget{% else %}Under Budget{% endif %}
                                 </span>
                             </div>
-                            {% if project._source_sheet and project._source_sheet != 'default' %}
+                            {% if project.source_sheet and project.source_sheet != 'default' %}
                             <div class="text-end">
-                                <small class="text-muted">Sheet: {{ project._source_sheet }}</small>
+                                <small class="text-muted">Sheet: {{ project.source_sheet }}</small>
                             </div>
                             {% endif %}
                         </div>
                     </div>
                     <div class="card-footer bg-transparent">
-                        <a href="{% url 'chatbot:project_detail' project_name=project.name %}{% if project._source_sheet %}?sheet={{ project._source_sheet }}{% endif %}" class="btn btn-sm btn-accent w-100">
+                        <!-- Also need to update this URL parameter -->
+                        <a href="{% url 'chatbot:project_detail' project_name=project.name %}{% if project.source_sheet %}?sheet={{ project.source_sheet }}{% endif %}" class="btn btn-sm btn-accent w-100">
                             <i class="fas fa-info-circle me-2"></i>View Details
                         </a>
                     </div>
