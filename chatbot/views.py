@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 import json
@@ -6,8 +6,12 @@ from .utils.chatbot_service import ChatbotService
 from .utils.google_sheets import GoogleSheetsClient
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.http import require_POST
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 
 @ensure_csrf_cookie
+@login_required(login_url='chatbot:login')
 def index(request):
     """
     View for the chatbot interface with CSRF protection
@@ -20,6 +24,7 @@ def index(request):
         'sheet_names': sheet_names
     })
 
+@login_required(login_url='chatbot:login')
 @require_POST
 def chat(request):
     """
@@ -62,6 +67,7 @@ def chat(request):
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
+@login_required(login_url='chatbot:login')
 def projects(request):
     """
     View to display all projects with pagination
@@ -119,6 +125,7 @@ def projects(request):
         'total_projects': len(projects_list)
     })
 
+@login_required(login_url='chatbot:login')
 def project_detail(request, project_name):
     """
     View to display details of a specific project
@@ -146,6 +153,7 @@ def project_detail(request, project_name):
         'sheet_name': project_sheet
     })
 
+@login_required(login_url='chatbot:login')
 def budget_analysis(request):
     """
     View to display budget analysis
@@ -166,3 +174,34 @@ def budget_analysis(request):
         'sheet_names': sheet_names,
         'selected_sheet': selected_sheet
     })
+
+def login_view(request):
+    """
+    View for user login
+    """
+    # If user is already logged in, redirect to chat interface
+    if request.user.is_authenticated:
+        return redirect('chatbot:index')
+        
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            # Redirect to the page the user was trying to access
+            next_url = request.GET.get('next', 'chatbot:index')
+            return redirect(next_url)
+        else:
+            messages.error(request, 'Invalid username or password')
+            
+    return render(request, 'chatbot/login.html')
+
+def logout_view(request):
+    """
+    View for user logout
+    """
+    logout(request)
+    messages.success(request, 'You have been logged out successfully')
+    return redirect('chatbot:login')
