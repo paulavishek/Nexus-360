@@ -151,3 +151,13 @@ if os.getenv('ADDITIONAL_SHEETS'):
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+# Cache configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'project-management-chatbot',
+    }
+}
+
+# Cache timeouts (in seconds)
+GOOGLE_SHEETS_CACHE_TIMEOUT = 300  # 5 minutes
