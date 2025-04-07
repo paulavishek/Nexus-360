@@ -6,7 +6,15 @@
 <div class="row mb-4">
     <div class="col-md-8">
         <h1>Projects</h1>
-        <p class="text-muted">Overview of all projects in the database</p>
+        <p class="text-muted">
+            {% if total_projects %}
+                Showing {{ projects.start_index }} - {{ projects.end_index }} of {{ total_projects }} projects
+                {% if selected_sheet %}in {{ selected_sheet }} sheet{% endif %}
+                {% if search_query %}matching "{{ search_query }}"{% endif %}
+            {% else %}
+                Overview of all projects in the database
+            {% endif %}
+        </p>
     </div>
     <div class="col-md-4 text-end">
         <a href="{% url 'chatbot:index' %}" class="btn btn-primary">
@@ -15,10 +23,45 @@
     </div>
 </div>
 
+<!-- Search and Filter -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <form method="get" action="{% url 'chatbot:projects' %}" class="d-flex">
+            {% if selected_sheet %}
+                <input type="hidden" name="sheet" value="{{ selected_sheet }}">
+            {% endif %}
+            <input type="text" name="search" class="form-control me-2" placeholder="Search projects..." value="{{ search_query|default:'' }}">
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="fas fa-search"></i>
+            </button>
+        </form>
+    </div>
+    <div class="col-md-4">
+        {% if sheet_names|length > 1 %}
+        <form method="get" action="{% url 'chatbot:projects' %}" class="d-flex">
+            {% if search_query %}
+                <input type="hidden" name="search" value="{{ search_query }}">
+            {% endif %}
+            <select name="sheet" class="form-select me-2" onchange="this.form.submit()">
+                <option value="">All Sheets</option>
+                {% for name in sheet_names %}
+                    <option value="{{ name }}" {% if selected_sheet == name %}selected{% endif %}>
+                        {{ name|title }}
+                    </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="fas fa-filter"></i>
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
 <div class="row">
     {% if projects %}
         {% for project in projects %}
-            <div class="col-md-6 col-lg-4">
+            <div class="col-md-6 col-lg-4 mb-4">
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span>{{ project.name }}</span>
@@ -43,10 +86,15 @@
                                     {% if project.expenses > project.budget %}Over Budget{% else %}Under Budget{% endif %}
                                 </span>
                             </div>
+                            {% if project._source_sheet and project._source_sheet != 'default' %}
+                            <div class="text-end">
+                                <small class="text-muted">Sheet: {{ project._source_sheet }}</small>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="card-footer bg-transparent">
-                        <a href="{% url 'chatbot:project_detail' project_name=project.name %}" class="btn btn-sm btn-accent w-100">
+                        <a href="{% url 'chatbot:project_detail' project_name=project.name %}{% if project._source_sheet %}?sheet={{ project._source_sheet }}{% endif %}" class="btn btn-sm btn-accent w-100">
                             <i class="fas fa-info-circle me-2"></i>View Details
                         </a>
                     </div>
@@ -56,9 +104,77 @@
     {% else %}
         <div class="col-12">
             <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>No projects found in the database.
+                <i class="fas fa-info-circle me-2"></i>No projects found{% if search_query %} matching "{{ search_query }}"{% endif %}.
+                {% if search_query %}
+                <a href="{% url 'chatbot:projects' %}{% if selected_sheet %}?sheet={{ selected_sheet }}{% endif %}" class="alert-link">Clear search</a>
+                {% endif %}
             </div>
         </div>
     {% endif %}
 </div>
+
+<!-- Pagination -->
+{% if projects.paginator.num_pages > 1 %}
+<div class="row mt-4">
+    <div class="col-12">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if projects.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if selected_sheet %}&sheet={{ selected_sheet }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ projects.previous_page_number }}{% if selected_sheet %}&sheet={{ selected_sheet }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                    </li>
+                {% endif %}
+                
+                {% for num in projects.paginator.page_range %}
+                    {% if num == projects.number %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > projects.number|add:'-3' and num < projects.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if selected_sheet %}&sheet={{ selected_sheet }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                {{ num }}
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if projects.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ projects.next_page_number }}{% if selected_sheet %}&sheet={{ selected_sheet }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ projects.paginator.num_pages }}{% if selected_sheet %}&sheet={{ selected_sheet }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-right"></i></span>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
