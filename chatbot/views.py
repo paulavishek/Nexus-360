@@ -88,6 +88,13 @@ def projects(request):
     project_data = chatbot.get_project_data(selected_sheet)
     projects_list = project_data['projects']
     
+    # Rename the _source_sheet attribute to source_sheet (without underscore)
+    for project in projects_list:
+        if '_source_sheet' in project:
+            project['source_sheet'] = project['_source_sheet']
+            # Optionally remove the original attribute to save memory
+            # del project['_source_sheet']
+    
     # Filter projects if search query is provided
     if search_query:
         search_query = search_query.lower()
