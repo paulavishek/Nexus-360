@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from .utils.chatbot_service import ChatbotService
 from .utils.google_sheets import GoogleSheetsClient
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 def index(request):
     """
@@ -46,9 +47,13 @@ def chat(request):
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
+# Update the projects view in chatbot/views.py
+
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
 def projects(request):
     """
-    View to display all projects
+    View to display all projects with pagination
     """
     chatbot = ChatbotService()
     sheets_client = GoogleSheetsClient()
@@ -59,12 +64,48 @@ def projects(request):
     if selected_sheet and selected_sheet not in sheet_names:
         selected_sheet = None
         
+    # Get search query if any
+    search_query = request.GET.get('search', None)
+    
+    # Get project data
     project_data = chatbot.get_project_data(selected_sheet)
+    projects_list = project_data['projects']
+    
+    # Filter projects if search query is provided
+    if search_query:
+        search_query = search_query.lower()
+        filtered_projects = []
+        for project in projects_list:
+            # Search in name, description and status
+            if (search_query in project.get('name', '').lower() or 
+                search_query in project.get('description', '').lower() or 
+                search_query in project.get('status', '').lower()):
+                filtered_projects.append(project)
+        projects_list = filtered_projects
+    
+    # Sort projects by name (or could use another field)
+    projects_list = sorted(projects_list, key=lambda x: x.get('name', '').lower())
+    
+    # Pagination
+    page = request.GET.get('page', 1)
+    items_per_page = 9  # 3x3 grid layout
+    paginator = Paginator(projects_list, items_per_page)
+    
+    try:
+        projects_page = paginator.page(page)
+    except PageNotAnInteger:
+        # If page is not an integer, deliver first page
+        projects_page = paginator.page(1)
+    except EmptyPage:
+        # If page is out of range, deliver last page
+        projects_page = paginator.page(paginator.num_pages)
     
     return render(request, 'chatbot/projects.html', {
-        'projects': project_data['projects'],
+        'projects': projects_page,
         'sheet_names': sheet_names,
-        'selected_sheet': selected_sheet
+        'selected_sheet': selected_sheet,
+        'search_query': search_query,
+        'total_projects': len(projects_list)
     })
 
 def project_detail(request, project_name):
