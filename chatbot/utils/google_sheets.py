@@ -40,19 +40,25 @@ class GoogleSheetsClient:
         return sheets
     
     def connect(self):
-        """Connect to Google Sheets API"""
+        """Connect to Google Sheets API with improved error handling"""
         try:
             credentials = ServiceAccountCredentials.from_json_keyfile_name(
                 self.credentials_file, self.scope)
             self.client = gspread.authorize(credentials)
             return True
+        except FileNotFoundError:
+            print(f"Error: Credentials file not found at {self.credentials_file}")
+            return False
+        except ValueError as e:
+            print(f"Error: Invalid credentials format - {e}")
+            return False
         except Exception as e:
             print(f"Error connecting to Google Sheets API: {e}")
             return False
     
     def get_all_projects(self, sheet_name=None):
         """
-        Get all projects from the Google Sheet
+        Get all projects from the Google Sheet with improved error handling
         
         Args:
             sheet_name (str, optional): Name of the sheet to query. Defaults to None (uses default sheet).
@@ -68,7 +74,22 @@ class GoogleSheetsClient:
             else:
                 current_sheet_id = self.sheet_id
             
-            sheet = self.client.open_by_key(current_sheet_id).worksheet("Projects")
+            try:
+                spreadsheet = self.client.open_by_key(current_sheet_id)
+            except gspread.exceptions.APIError as e:
+                print(f"API Error accessing spreadsheet: {e}")
+                if "404" in str(e):
+                    print(f"Spreadsheet with ID {current_sheet_id} not found. Check if the ID is correct.")
+                elif "403" in str(e):
+                    print(f"Permission denied for spreadsheet {current_sheet_id}. Check if the service account has access.")
+                return []
+            
+            try:
+                sheet = spreadsheet.worksheet("Projects")
+            except gspread.exceptions.WorksheetNotFound:
+                print(f"'Projects' worksheet not found in spreadsheet {current_sheet_id}")
+                return []
+            
             projects = sheet.get_all_records()
             
             # Add source information to each project
@@ -76,9 +97,83 @@ class GoogleSheetsClient:
                 project['_source_sheet'] = sheet_name or 'default'
             
             return projects
+        except gspread.exceptions.APIError as e:
+            print(f"Google Sheets API Error: {e}")
+            # Handle rate limiting
+            if "429" in str(e):
+                print("Rate limit exceeded. Waiting before retrying...")
+                import time
+                time.sleep(5)  # Wait 5 seconds before the caller might retry
+            return []
         except Exception as e:
             print(f"Error fetching projects: {e}")
             return []
+
+    def validate_sheet_structure(self, sheet_name=None):
+        """
+        Validates that the spreadsheet has the expected structure
+        
+        Args:
+            sheet_name (str, optional): Name of the sheet to validate
+            
+        Returns:
+            dict: Validation results with issues found
+        """
+        if not self.client:
+            if not self.connect():
+                return {"valid": False, "errors": ["Could not connect to Google Sheets"]}
+        
+        try:
+            # Determine which sheet to use
+            if sheet_name and sheet_name in self.available_sheets:
+                current_sheet_id = self.available_sheets[sheet_name]
+            else:
+                current_sheet_id = self.sheet_id
+            
+            spreadsheet = self.client.open_by_key(current_sheet_id)
+            
+            # Check for required worksheets
+            worksheet_names = [ws.title for ws in spreadsheet.worksheets()]
+            errors = []
+            
+            if "Projects" not in worksheet_names:
+                errors.append("Missing 'Projects' worksheet")
+            if "Members" not in worksheet_names:
+                errors.append("Missing 'Members' worksheet")
+            
+            # Check for required columns in Projects
+            if "Projects" in worksheet_names:
+                projects_sheet = spreadsheet.worksheet("Projects")
+                headers = projects_sheet.row_values(1)
+                required_project_fields = ["name", "description", "start_date", "end_date", "budget", "expenses", "status"]
+                
+                for field in required_project_fields:
+                    if field.lower() not in [h.lower() for h in headers]:
+                        errors.append(f"Missing '{field}' column in Projects worksheet")
+            
+            # Check for required columns in Members
+            if "Members" in worksheet_names:
+                members_sheet = spreadsheet.worksheet("Members")
+                headers = members_sheet.row_values(1)
+                required_member_fields = ["project_name", "name", "role", "email"]
+                
+                for field in required_member_fields:
+                    if field.lower() not in [h.lower() for h in headers]:
+                        errors.append(f"Missing '{field}' column in Members worksheet")
+            
+            return {
+                "valid": len(errors) == 0,
+                "sheet_name": sheet_name or "default",
+                "sheets_found": worksheet_names,
+                "errors": errors
+            }
+            
+        except Exception as e:
+            return {
+                "valid": False,
+                "sheet_name": sheet_name or "default",
+                "errors": [f"Error validating sheet structure: {str(e)}"]
+            }
     
     def get_all_projects_from_all_sheets(self):
         """Get all projects from all configured Google Sheets"""
