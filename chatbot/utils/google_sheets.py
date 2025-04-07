@@ -1,8 +1,10 @@
 import os
 import json
 import gspread
+import time
 from oauth2client.service_account import ServiceAccountCredentials
 from django.conf import settings
+from django.core.cache import cache
 
 class GoogleSheetsClient:
     """
@@ -23,6 +25,9 @@ class GoogleSheetsClient:
         self.available_sheets = self._load_available_sheets()
         
         self.client = None
+
+        # Set last update time for cache invalidation
+        self.last_update_time = {}
     
     def _load_available_sheets(self):
         """Load all available sheet IDs from settings"""
@@ -56,13 +61,24 @@ class GoogleSheetsClient:
             print(f"Error connecting to Google Sheets API: {e}")
             return False
     
-    def get_all_projects(self, sheet_name=None):
+    def get_all_projects(self, sheet_name=None, use_cache=True):
         """
-        Get all projects from the Google Sheet with improved error handling
+        Get all projects from the Google Sheet with caching
         
         Args:
             sheet_name (str, optional): Name of the sheet to query. Defaults to None (uses default sheet).
+            use_cache (bool): Whether to use cached data if available. Defaults to True.
         """
+        # Create cache key
+        cache_key = f"projects_{sheet_name or 'default'}"
+        
+        # Try to get data from cache if use_cache is True
+        if use_cache:
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return cached_data
+        
+        # If not in cache or cache not to be used, fetch from Google Sheets
         if not self.client:
             if not self.connect():
                 return []
@@ -74,37 +90,21 @@ class GoogleSheetsClient:
             else:
                 current_sheet_id = self.sheet_id
             
-            try:
-                spreadsheet = self.client.open_by_key(current_sheet_id)
-            except gspread.exceptions.APIError as e:
-                print(f"API Error accessing spreadsheet: {e}")
-                if "404" in str(e):
-                    print(f"Spreadsheet with ID {current_sheet_id} not found. Check if the ID is correct.")
-                elif "403" in str(e):
-                    print(f"Permission denied for spreadsheet {current_sheet_id}. Check if the service account has access.")
-                return []
-            
-            try:
-                sheet = spreadsheet.worksheet("Projects")
-            except gspread.exceptions.WorksheetNotFound:
-                print(f"'Projects' worksheet not found in spreadsheet {current_sheet_id}")
-                return []
-            
+            spreadsheet = self.client.open_by_key(current_sheet_id)
+            sheet = spreadsheet.worksheet("Projects")
             projects = sheet.get_all_records()
             
             # Add source information to each project
             for project in projects:
                 project['_source_sheet'] = sheet_name or 'default'
             
+            # Store in cache with timeout
+            cache.set(cache_key, projects, settings.GOOGLE_SHEETS_CACHE_TIMEOUT)
+            
+            # Update last update time
+            self.last_update_time[cache_key] = time.time()
+            
             return projects
-        except gspread.exceptions.APIError as e:
-            print(f"Google Sheets API Error: {e}")
-            # Handle rate limiting
-            if "429" in str(e):
-                print("Rate limit exceeded. Waiting before retrying...")
-                import time
-                time.sleep(5)  # Wait 5 seconds before the caller might retry
-            return []
         except Exception as e:
             print(f"Error fetching projects: {e}")
             return []
@@ -175,21 +175,38 @@ class GoogleSheetsClient:
                 "errors": [f"Error validating sheet structure: {str(e)}"]
             }
     
-    def get_all_projects_from_all_sheets(self):
-        """Get all projects from all configured Google Sheets"""
+    def get_all_projects_from_all_sheets(self, use_cache=True):
+        """
+        Get all projects from all configured Google Sheets with caching
+        
+        Args:
+            use_cache (bool): Whether to use cached data if available
+        """
         all_projects = []
         
-        # Loop through all available sheets
+        # Try to get from cache first
+        if use_cache:
+            cache_key = "all_projects_all_sheets"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return cached_data
+        
+        # If not in cache, fetch from all sheets
         for name, sheet_id in self.available_sheets.items():
             # Temporarily set the sheet ID
             self.sheet_id = sheet_id
             
             # Get projects from this sheet
-            sheet_projects = self.get_all_projects(name)
+            sheet_projects = self.get_all_projects(name, use_cache)
             all_projects.extend(sheet_projects)
         
         # Reset to default sheet
         self.sheet_id = self.available_sheets.get('default', self.sheet_id)
+        
+        # Cache the combined results
+        if use_cache:
+            cache_key = "all_projects_all_sheets"
+            cache.set(cache_key, all_projects, settings.GOOGLE_SHEETS_CACHE_TIMEOUT)
         
         return all_projects
     
@@ -215,15 +232,32 @@ class GoogleSheetsClient:
         
         return None
     
-    def get_project_members(self, project_name=None, project_id=None, sheet_name=None):
+    def get_project_members(self, project_name=None, project_id=None, sheet_name=None, use_cache=True):
         """
-        Get members for a specific project or all members
+        Get members for a specific project or all members with caching
         
         Args:
             project_name (str, optional): Project name to filter members by
             project_id (str, optional): Project ID to filter members by
-            sheet_name (str, optional): Name of the sheet to query. If None, uses default sheet.
+            sheet_name (str, optional): Name of the sheet to query
+            use_cache (bool): Whether to use cached data if available
         """
+        # Create cache key
+        cache_key = f"members_{sheet_name or 'default'}"
+        
+        # Try to get data from cache if use_cache is True
+        if use_cache:
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                # Apply filters to cached data
+                if project_name:
+                    return [m for m in cached_data if m.get('project_name', '').lower() == project_name.lower()]
+                elif project_id:
+                    return [m for m in cached_data if str(m.get('project_id', '')) == str(project_id)]
+                else:
+                    return cached_data
+        
+        # If not in cache or cache not to be used, fetch from Google Sheets
         if not self.client:
             if not self.connect():
                 return []
@@ -242,6 +276,13 @@ class GoogleSheetsClient:
             for member in all_members:
                 member['_source_sheet'] = sheet_name or 'default'
             
+            # Store in cache with timeout
+            cache.set(cache_key, all_members, settings.GOOGLE_SHEETS_CACHE_TIMEOUT)
+            
+            # Update last update time
+            self.last_update_time[cache_key] = time.time()
+            
+            # Apply filters
             if project_name:
                 return [m for m in all_members if m.get('project_name', '').lower() == project_name.lower()]
             elif project_id:
@@ -270,18 +311,21 @@ class GoogleSheetsClient:
         
         return all_members
     
-    def get_budget_statistics(self, sheet_name=None):
+    def get_budget_statistics(self, sheet_name=None, use_cache=True):
         """
-        Get budget statistics for all projects in a sheet or all sheets
+        Get budget statistics for all projects in a sheet or all sheets with caching
         
         Args:
-            sheet_name (str, optional): Name of the sheet to analyze. If None, analyzes all sheets.
+            sheet_name (str, optional): Name of the sheet to analyze
+            use_cache (bool): Whether to use cached data if available
         """
+        # Get projects (either from cache or fresh)
         if sheet_name:
-            projects = self.get_all_projects(sheet_name)
+            projects = self.get_all_projects(sheet_name, use_cache)
         else:
-            projects = self.get_all_projects_from_all_sheets()
+            projects = self.get_all_projects_from_all_sheets(use_cache)
             
+        # Process statistics
         over_budget = [p for p in projects if float(p.get('expenses', 0)) > float(p.get('budget', 0))]
         under_budget = [p for p in projects if float(p.get('expenses', 0)) <= float(p.get('budget', 0))]
         
@@ -320,3 +364,32 @@ class GoogleSheetsClient:
     def get_available_sheet_names(self):
         """Get a list of all available sheet names"""
         return list(self.available_sheets.keys())
+
+    def clear_cache(self, sheet_name=None):
+        """
+        Clear cached data for a specific sheet or all sheets
+        
+        Args:
+            sheet_name (str, optional): Name of the sheet to clear cache for
+        """
+        if sheet_name:
+            cache.delete(f"projects_{sheet_name}")
+            cache.delete(f"members_{sheet_name}")
+        else:
+            # Clear cache for all sheets
+            for name in self.available_sheets.keys():
+                cache.delete(f"projects_{name}")
+                cache.delete(f"members_{name}")
+            
+            # Also clear default cache
+            cache.delete("projects_default")
+            cache.delete("members_default")
+            
+        # Clear last update time records
+        if sheet_name:
+            if f"projects_{sheet_name}" in self.last_update_time:
+                del self.last_update_time[f"projects_{sheet_name}"]
+            if f"members_{sheet_name}" in self.last_update_time:
+                del self.last_update_time[f"members_{sheet_name}"]
+        else:
+            self.last_update_time = {}
