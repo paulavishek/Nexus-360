@@ -148,11 +148,20 @@ def project_detail(request, project_name):
     if not project:
         return render(request, 'chatbot/project_not_found.html')
     
+    # Rename the _source_sheet attribute to source_sheet (without underscore)
+    if '_source_sheet' in project:
+        project['source_sheet'] = project['_source_sheet']
+    
     # Get the sheet name from the project if it exists
-    project_sheet = project.get('_source_sheet', sheet_name)
+    project_sheet = project.get('source_sheet', sheet_name)
     
     # Get project members
     members = sheets_client.get_project_members(project_name=project_name, sheet_name=project_sheet)
+    
+    # Rename _source_sheet for members too if needed
+    for member in members:
+        if '_source_sheet' in member:
+            member['source_sheet'] = member['_source_sheet']
     
     return render(request, 'chatbot/project_detail.html', {
         'project': project,
