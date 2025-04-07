@@ -170,124 +170,143 @@
 
 {% block extra_js %}
 <script>
-$(document).ready(function() {
-    const chatContainer = $('#chat-container');
-    const userInput = $('#user-input');
-    const sendBtn = $('#send-btn');
-    const typingIndicator = $('#typing-indicator');
-    const sheetSelector = $('#sheet-selector');
-    let chatHistory = [];
-    
-    // Function to add a new message to the chat
-    function addMessage(content, sender, source = null, sheetName = null) {
-        const messageClass = sender === 'user' ? 'user-message' : 'bot-message';
-        let messageHTML = `<div class="${messageClass} message">${content}`;
-        
-        if (sender !== 'user') {
-            let sourceInfo = '';
-            if (source) {
-                sourceInfo += source;
-            }
-            if (sheetName) {
-                sourceInfo += ` <span class="badge bg-secondary sheet-badge">Sheet: ${sheetName}</span>`;
-            }
-            if (sourceInfo) {
-                messageHTML += `<div class="message-source">${sourceInfo}</div>`;
-            }
-        }
-        
-        messageHTML += `</div>`;
-        
-        // Add message before typing indicator
-        typingIndicator.before(messageHTML);
-        
-        // Scroll to bottom
-        chatContainer.scrollTop(chatContainer.prop('scrollHeight'));
-        
-        // Add to chat history
-        chatHistory.push({
-            role: sender === 'user' ? 'user' : 'assistant',
-            content: content
-        });
-        
-        // Keep history at a reasonable size (last 20 messages)
-        if (chatHistory.length > 20) {
-            chatHistory = chatHistory.slice(chatHistory.length - 20);
-        }
-    }
-    
-    // Function to send message to backend
-    function sendMessage() {
-        const message = userInput.val().trim();
-        if (message === '') return;
-        
-        // Get selected sheet if any
-        const selectedSheet = sheetSelector.val();
-        
-        // Add user message to chat
-        addMessage(message, 'user');
-        
-        // Clear input
-        userInput.val('');
-        
-        // Show typing indicator
-        typingIndicator.show();
-        
-        // Send message to backend via AJAX
-        $.ajax({
-            type: 'POST',
-            url: '/chat/',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                message: message,
-                history: chatHistory,
-                sheet_name: selectedSheet
-            }),
-            success: function(data) {
-                // Hide typing indicator
-                typingIndicator.hide();
-                
-                // Add bot response to chat
-                addMessage(data.response, 'bot', data.source, data.sheet_name);
-            },
-            error: function(xhr, status, error) {
-                // Hide typing indicator
-                typingIndicator.hide();
-                
-                // Show error message
-                let errorMessage = "Sorry, I encountered an error processing your request.";
-                if (xhr.responseJSON && xhr.responseJSON.error) {
-                    errorMessage += " Details: " + xhr.responseJSON.error;
+    $(document).ready(function () {
+        const chatContainer = $('#chat-container');
+        const userInput = $('#user-input');
+        const sendBtn = $('#send-btn');
+        const typingIndicator = $('#typing-indicator');
+        const sheetSelector = $('#sheet-selector');
+        let chatHistory = [];
+
+        // Function to add a new message to the chat
+        function addMessage(content, sender, source = null, sheetName = null) {
+            const messageClass = sender === 'user' ? 'user-message' : 'bot-message';
+            let messageHTML = `<div class="${messageClass} message">${content}`;
+
+            if (sender !== 'user') {
+                let sourceInfo = '';
+                if (source) {
+                    sourceInfo += source;
                 }
-                addMessage(errorMessage, 'bot', 'Error');
-                
-                console.error("AJAX Error:", status, error);
+                if (sheetName) {
+                    sourceInfo += ` <span class="badge bg-secondary sheet-badge">Sheet: ${sheetName}</span>`;
+                }
+                if (sourceInfo) {
+                    messageHTML += `<div class="message-source">${sourceInfo}</div>`;
+                }
+            }
+
+            messageHTML += `</div>`;
+
+            // Add message before typing indicator
+            typingIndicator.before(messageHTML);
+
+            // Scroll to bottom
+            chatContainer.scrollTop(chatContainer.prop('scrollHeight'));
+
+            // Add to chat history
+            chatHistory.push({
+                role: sender === 'user' ? 'user' : 'assistant',
+                content: content
+            });
+
+            // Keep history at a reasonable size (last 20 messages)
+            if (chatHistory.length > 20) {
+                chatHistory = chatHistory.slice(chatHistory.length - 20);
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Function to send message to backend
+        function sendMessage() {
+            const message = userInput.val().trim();
+            if (message === '') return;
+
+            // Get selected sheet if any
+            const selectedSheet = sheetSelector.val();
+
+            // Add user message to chat
+            addMessage(message, 'user');
+
+            // Clear input
+            userInput.val('');
+
+            // Show typing indicator
+            typingIndicator.show();
+
+            $.ajax({
+                type: 'POST',
+                url: '/chat/',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    message: message,
+                    history: chatHistory,
+                    sheet_name: selectedSheet
+                }),
+                beforeSend: function (xhr) {
+                    // Add the CSRF token to the request header
+                    xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+                },
+                success: function (data) {
+                    // Hide typing indicator
+                    typingIndicator.hide();
+
+                    // Add bot response to chat
+                    addMessage(data.response, 'bot', data.source, data.sheet_name);
+                },
+                error: function (xhr, status, error) {
+                    // Hide typing indicator
+                    typingIndicator.hide();
+
+                    // Show error message
+                    let errorMessage = "Sorry, I encountered an error processing your request.";
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMessage += " Details: " + xhr.responseJSON.error;
+                    }
+                    addMessage(errorMessage, 'bot', 'Error');
+
+                    console.error("AJAX Error:", status, error);
+                }
+            });
+        }
+
+        // Send button click handler
+        sendBtn.on('click', sendMessage);
+
+        // Send message on Enter key
+        userInput.on('keypress', function (e) {
+            if (e.which === 13) {
+                sendMessage();
             }
         });
-    }
-    
-    // Send button click handler
-    sendBtn.on('click', sendMessage);
-    
-    // Send message on Enter key
-    userInput.on('keypress', function(e) {
-        if (e.which === 13) {
-            sendMessage();
-        }
+
+        // Sheet selector change handler - optionally add a message about changing context
+        sheetSelector.on('change', function () {
+            const selectedSheet = $(this).val();
+            const message = selectedSheet
+                ? `Now focusing on the "${selectedSheet}" project sheet.`
+                : "Now considering all project sheets.";
+
+            addMessage(message, 'bot', 'System');
+        });
+
+        // Focus input on page load
+        userInput.focus();
     });
-    
-    // Sheet selector change handler - optionally add a message about changing context
-    sheetSelector.on('change', function() {
-        const selectedSheet = $(this).val();
-        const message = selectedSheet 
-            ? `Now focusing on the "${selectedSheet}" project sheet.` 
-            : "Now considering all project sheets.";
-        
-        addMessage(message, 'bot', 'System');
-    });
-    
-    // Focus input on page load
-    userInput.focus();
-});
 </script>
 {% endblock %}
