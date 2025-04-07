@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}Project Management Chatbot{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        height: 500px;
+        overflow-y: auto;
+        background-color: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .message {
+        margin-bottom: 15px;
+        padding: 10px 15px;
+        border-radius: 18px;
+        max-width: 75%;
+        word-wrap: break-word;
+    }
+    
+    .user-message {
+        background-color: var(--primary-color);
+        color: white;
+        margin-left: auto;
+        border-bottom-right-radius: 5px;
+    }
+    
+    .bot-message {
+        background-color: #e9ecef;
+        color: var(--dark-text);
+        margin-right: auto;
+        border-bottom-left-radius: 5px;
+    }
+    
+    .message-source {
+        font-size: 12px;
+        color: #6c757d;
+        margin-top: 5px;
+        text-align: right;
+    }
+    
+    .typing-indicator {
+        display: none;
+        padding: 10px 15px;
+        background-color: #e9ecef;
+        border-radius: 18px;
+        margin-bottom: 15px;
+        width: 70px;
+        border-bottom-left-radius: 5px;
+    }
+    
+    .dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #777;
+        margin-right: 3px;
+        animation: wave 1.3s linear infinite;
+    }
+    
+    .dot:nth-child(2) {
+        animation-delay: -1.1s;
+    }
+    
+    .dot:nth-child(3) {
+        animation-delay: -0.9s;
+    }
+    
+    @keyframes wave {
+        0%, 60%, 100% { transform: initial; }
+        30% { transform: translateY(-5px); }
+    }
+    
+    .input-group {
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border-radius: 10px;
+    }
+    
+    #user-input {
+        border-top-left-radius: 10px;
+        border-bottom-left-radius: 10px;
+        border: none;
+        padding: 15px;
+        height: 60px;
+    }
+    
+    .send-btn {
+        background-color: var(--secondary-color);
+        border-color: var(--secondary-color);
+        color: white;
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+        width: 60px;
+    }
+    
+    .welcome-message {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .sheet-selector {
+        max-width: 300px;
+        margin: 0 auto 20px auto;
+    }
+    
+    .sheet-badge {
+        font-size: 11px;
+        vertical-align: top;
+        margin-left: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+        <div class="welcome-message">
+            <h2>Project Management Assistant</h2>
+            <p class="text-muted">Ask me anything about your projects, team members, or budget information!</p>
+            
+            {% if sheet_names|length > 1 %}
+            <div class="sheet-selector">
+                <select class="form-select" id="sheet-selector">
+                    <option value="">All Project Sheets</option>
+                    {% for name in sheet_names %}
+                        <option value="{{ name }}">{{ name|title }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text text-center">Select a specific sheet or query across all sheets</div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="chat-container" id="chat-container">
+            <div class="bot-message message">
+                Hello! I'm your project management assistant. 
+                {% if sheet_names|length > 1 %}
+                I can answer questions about any of your project sheets. Use the dropdown above to focus on a specific sheet.
+                {% else %}
+                How can I help you today?
+                {% endif %}
+                <div class="message-source">OpenAI GPT-4o-mini</div>
+            </div>
+            <div class="typing-indicator" id="typing-indicator">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+            </div>
+        </div>
+        
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" id="user-input" placeholder="Type your message here..." aria-label="User message">
+            <button class="btn send-btn" type="button" id="send-btn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        
+        <p class="text-center text-muted small">
+            <i class="fas fa-info-circle me-1"></i> 
+            This chatbot uses OpenAI GPT-4o-mini with Google Gemini as a fallback
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        const chatContainer = $('#chat-container');
+        const userInput = $('#user-input');
+        const sendBtn = $('#send-btn');
+        const typingIndicator = $('#typing-indicator');
+        const sheetSelector = $('#sheet-selector');
+        let chatHistory = [];
+        
+        // Function to add a new message to the chat
+        function addMessage(content, sender, source = null, sheetName = null) {
+            const messageClass = sender === 'user' ? 'user-message' : 'bot-message';
+            let messageHTML = `<div class="${messageClass} message">${content}`;
+            
+            if (sender !== 'user') {
+                let sourceInfo = '';
+                if (source) {
+                    sourceInfo += source;
+                }
+                if (sheetName) {
+                    sourceInfo += ` <span class="badge bg-secondary sheet-badge">Sheet: ${sheetName}</span>`;
+                }
+                if (sourceInfo) {
+                    messageHTML += `<div class="message-source">${sourceInfo}</div>`;
+                }
+            }
+            
+            messageHTML += `</div>`;
+            
+            // Add message before typing indicator
+            typingIndicator.before(messageHTML);
+            
+            // Scroll to bottom
+            chatContainer.scrollTop(chatContainer.prop('scrollHeight'));
+            
+            // Add to chat history
+            chatHistory.push({
+                role: sender === 'user' ? 'user' : 'assistant',
+                content: content
+            });
+            
+            // Keep history at a reasonable size (last 20 messages)
+            if (chatHistory.length > 20) {
+                chatHistory = chatHistory.slice(chatHistory.length - 20);
+            }
+        }
+        
+        // Function to send message to backend
+        function sendMessage() {
+            const message = userInput.val().trim();
+            if (message === '') return;
+            
+            // Get selected sheet if any
+            const selectedSheet = sheetSelector.val();
+            
+            // Add user message to chat
+            addMessage(message, 'user');
+            
+            // Clear input
+            userInput.val('');
+        }
+            
+        // Send message on Enter key
+        userInput.on('keypress', function(e) {
+            if (e.which === 13) {
+                sendMessage();
+            }
+        });
+        
+        // Focus input on page load
+        userInput.focus();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,141 @@
+{
+  "Projects": [
+    {
+      "name": "Website Redesign",
+      "description": "Redesign the company website with modern UI/UX principles",
+      "start_date": "2025-01-15",
+      "end_date": "2025-06-30",
+      "budget": 25000.00,
+      "expenses": 18750.50,
+      "status": "active"
+    },
+    {
+      "name": "Mobile App Development",
+      "description": "Develop a cross-platform mobile application for customers",
+      "start_date": "2024-11-01",
+      "end_date": "2025-08-15",
+      "budget": 60000.00,
+      "expenses": 65200.75,
+      "status": "active"
+    },
+    {
+      "name": "Database Migration",
+      "description": "Migrate legacy database to new cloud-based solution",
+      "start_date": "2025-02-01",
+      "end_date": "2025-04-30",
+      "budget": 15000.00,
+      "expenses": 14200.00,
+      "status": "completed"
+    },
+    {
+      "name": "Marketing Campaign",
+      "description": "Q2 digital marketing campaign across multiple channels",
+      "start_date": "2025-04-01",
+      "end_date": "2025-06-30",
+      "budget": 35000.00,
+      "expenses": 17500.00,
+      "status": "active"
+    },
+    {
+      "name": "Office Renovation",
+      "description": "Renovate the main office space and meeting rooms",
+      "start_date": "2025-01-10",
+      "end_date": "2025-03-15",
+      "budget": 50000.00,
+      "expenses": 62500.00,
+      "status": "completed"
+    }
+  ],
+  "Members": [
+    {
+      "project_name": "Website Redesign",
+      "name": "Sarah Johnson",
+      "role": "Project Manager",
+      "email": "sarah.johnson@example.com"
+    },
+    {
+      "project_name": "Website Redesign",
+      "name": "David Lee",
+      "role": "UI Designer",
+      "email": "david.lee@example.com"
+    },
+    {
+      "project_name": "Website Redesign",
+      "name": "Michael Chen",
+      "role": "Frontend Developer",
+      "email": "michael.chen@example.com"
+    },
+    {
+      "project_name": "Website Redesign",
+      "name": "Anna Garcia",
+      "role": "Backend Developer",
+      "email": "anna.garcia@example.com"
+    },
+    {
+      "project_name": "Mobile App Development",
+      "name": "James Wilson",
+      "role": "Project Manager",
+      "email": "james.wilson@example.com"
+    },
+    {
+      "project_name": "Mobile App Development",
+      "name": "Emily Davis",
+      "role": "Mobile Developer",
+      "email": "emily.davis@example.com"
+    },
+    {
+      "project_name": "Mobile App Development",
+      "name": "Robert Taylor",
+      "role": "Mobile Developer",
+      "email": "robert.taylor@example.com"
+    },
+    {
+      "project_name": "Mobile App Development",
+      "name": "Sophia Martinez",
+      "role": "QA Engineer",
+      "email": "sophia.martinez@example.com"
+    },
+    {
+      "project_name": "Database Migration",
+      "name": "William Brown",
+      "role": "Project Manager",
+      "email": "william.brown@example.com"
+    },
+    {
+      "project_name": "Database Migration",
+      "name": "Olivia Jones",
+      "role": "Database Administrator",
+      "email": "olivia.jones@example.com"
+    },
+    {
+      "project_name": "Marketing Campaign",
+      "name": "Ethan Smith",
+      "role": "Marketing Manager",
+      "email": "ethan.smith@example.com"
+    },
+    {
+      "project_name": "Marketing Campaign",
+      "name": "Ava Miller",
+      "role": "Content Writer",
+      "email": "ava.miller@example.com"
+    },
+    {
+      "project_name": "Marketing Campaign",
+      "name": "Noah Wilson",
+      "role": "Social Media Specialist",
+      "email": "noah.wilson@example.com"
+    },
+    {
+      "project_name": "Office Renovation",
+      "name": "Isabella Thomas",
+      "role": "Facilities Manager",
+      "email": "isabella.thomas@example.com"
+    },
+    {
+      "project_name": "Office Renovation",
+      "name": "Liam Anderson",
+      "role": "Interior Designer",
+      "email": "liam.anderson@example.com"
+    }
+  ]
+}
