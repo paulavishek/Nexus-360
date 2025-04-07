@@ -148,3 +148,6 @@ if os.getenv('ADDITIONAL_SHEETS'):
         if ':' in sheet:
             name, sheet_id = sheet.strip().split(':', 1)
             ADDITIONAL_GOOGLE_SHEETS[name] = sheet_id
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
