@@ -1,14 +1,16 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 import json
 from .utils.chatbot_service import ChatbotService
 from .utils.google_sheets import GoogleSheetsClient
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.views.decorators.http import require_POST
 
+@ensure_csrf_cookie
 def index(request):
     """
-    View for the chatbot interface
+    View for the chatbot interface with CSRF protection
     """
     # Get available sheet names to display in the interface
     sheets_client = GoogleSheetsClient()
@@ -18,38 +20,47 @@ def index(request):
         'sheet_names': sheet_names
     })
 
-@csrf_exempt
+@require_POST
 def chat(request):
     """
-    API endpoint for chatbot interactions
+    API endpoint for chatbot interactions with CSRF protection
     """
-    if request.method == 'POST':
-        try:
-            # Parse the request body
-            data = json.loads(request.body)
-            message = data.get('message', '')
-            history = data.get('history', [])
-            sheet_name = data.get('sheet_name', None)
-            
-            # Get response from chatbot service
-            chatbot = ChatbotService()
-            response = chatbot.get_response(message, sheet_name, history)
-            
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        message = data.get('message', '')
+        history = data.get('history', [])
+        sheet_name = data.get('sheet_name', None)
+        
+        # Validate inputs
+        if not message or len(message.strip()) == 0:
             return JsonResponse({
-                'response': response['response'],
-                'source': response['source'],
-                'sheet_name': response['sheet_name']
-            })
-        except Exception as e:
-            return JsonResponse({
-                'error': str(e)
-            }, status=500)
+                'error': 'Message cannot be empty'
+            }, status=400)
+            
+        # Limit history size
+        if history and len(history) > 50:  # Reasonable limit
+            history = history[-50:]  # Keep only the last 50 messages
+        
+        # Get response from chatbot service
+        chatbot = ChatbotService()
+        response = chatbot.get_response(message, sheet_name, history)
+        
+        return JsonResponse({
+            'response': response['response'],
+            'source': response['source'],
+            'sheet_name': response['sheet_name']
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'error': str(e)
+        }, status=500)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
-
-# Update the projects view in chatbot/views.py
-
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 def projects(request):
     """
