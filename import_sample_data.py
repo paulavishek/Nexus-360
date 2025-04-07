@@ -9,6 +9,7 @@ import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from dotenv import load_dotenv
+import sys
 
 # Load environment variables
 load_dotenv()
@@ -25,18 +26,46 @@ def import_sample_data():
         print("Please make sure GOOGLE_SHEETS_CREDENTIALS_FILE and GOOGLE_SHEETS_PROJECT_DB are set in your .env file.")
         return False
     
+    # Check if credentials file exists
+    if not os.path.exists(creds_file):
+        print(f"Error: Credentials file not found at {creds_file}")
+        print("Please make sure the path is correct and the file exists.")
+        return False
+    
     try:
         # Load sample data
-        with open('sample_data.json', 'r') as file:
+        sample_data_path = 'sample_data.json'
+        if not os.path.exists(sample_data_path):
+            print(f"Error: Sample data file not found at {sample_data_path}")
+            return False
+        
+        with open(sample_data_path, 'r') as file:
             sample_data = json.load(file)
+        
+        print("Sample data loaded successfully.")
         
         # Connect to Google Sheets
         scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        credentials = ServiceAccountCredentials.from_json_keyfile_name(creds_file, scope)
-        gc = gspread.authorize(credentials)
+        try:
+            credentials = ServiceAccountCredentials.from_json_keyfile_name(creds_file, scope)
+            gc = gspread.authorize(credentials)
+            print("Successfully connected to Google Sheets API.")
+        except Exception as e:
+            print(f"Error connecting to Google Sheets API: {e}")
+            print("Please check your credentials file and ensure it has the correct permissions.")
+            return False
         
         # Open the spreadsheet by ID
-        spreadsheet = gc.open_by_key(sheet_id)
+        try:
+            spreadsheet = gc.open_by_key(sheet_id)
+            print(f"Successfully opened spreadsheet: {spreadsheet.title}")
+        except gspread.exceptions.APIError as e:
+            print(f"Error opening spreadsheet: {e}")
+            if "404" in str(e):
+                print(f"Spreadsheet with ID {sheet_id} not found. Check if the ID is correct.")
+            elif "403" in str(e):
+                print(f"Permission denied for spreadsheet {sheet_id}. Make sure the service account has access.")
+            return False
         
         # Import Projects data
         try:
@@ -45,8 +74,10 @@ def import_sample_data():
                 projects_sheet = spreadsheet.worksheet("Projects")
                 # Clear existing data if sheet exists
                 projects_sheet.clear()
+                print("Existing 'Projects' worksheet cleared.")
             except gspread.exceptions.WorksheetNotFound:
                 projects_sheet = spreadsheet.add_worksheet(title="Projects", rows=100, cols=20)
+                print("Created new 'Projects' worksheet.")
             
             # Prepare headers and data
             projects_data = sample_data.get("Projects", [])
@@ -77,8 +108,10 @@ def import_sample_data():
                 members_sheet = spreadsheet.worksheet("Members")
                 # Clear existing data if sheet exists
                 members_sheet.clear()
+                print("Existing 'Members' worksheet cleared.")
             except gspread.exceptions.WorksheetNotFound:
                 members_sheet = spreadsheet.add_worksheet(title="Members", rows=100, cols=20)
+                print("Created new 'Members' worksheet.")
             
             # Prepare headers and data
             members_data = sample_data.get("Members", [])
@@ -112,4 +145,8 @@ def import_sample_data():
 
 if __name__ == "__main__":
     print("Starting import of sample data to Google Sheets...")
-    import_sample_data()
+    success = import_sample_data()
+    if not success:
+        print("\nImport failed. Please check the error messages above.")
+        sys.exit(1)
+    sys.exit(0)
