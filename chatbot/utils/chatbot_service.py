@@ -35,16 +35,18 @@ class ChatbotService:
             'budget_statistics': budget_stats
         }
     
+    # Update this method in chatbot/utils/chatbot_service.py
+
     def get_response(self, prompt, sheet_name=None, history=None):
         """
-        Get chatbot response with fallback strategy
-        
+        Get chatbot response with fallback strategy and improved error handling
+
         Args:
             prompt (str): User query
             sheet_name (str, optional): Name of the specific sheet to query.
-                                       If None, considers all sheets.
+                                        If None, considers all sheets.
             history (list): Chat history for context
-            
+
         Returns:
             dict: Response with source information
         """
@@ -57,7 +59,18 @@ class ChatbotService:
             sheet_name = detected_sheet
             
         # Get data from specified sheet or all sheets
-        project_data = self.get_project_data(sheet_name) if project_related else None
+        try:
+            project_data = self.get_project_data(sheet_name) if project_related else None
+        except Exception as e:
+            print(f"Error fetching project data: {e}")
+            project_data = None
+            # Return error message if we can't even fetch project data
+            return {
+                'response': f"I'm having trouble accessing the project database. Please try again later. Error: {str(e)}",
+                'source': 'error',
+                'sheet_name': sheet_name,
+                'error': str(e)
+            }
         
         # If sheet name is specified, add context about which sheet is being queried
         if project_data and sheet_name:
@@ -65,14 +78,17 @@ class ChatbotService:
         elif project_data:
             available_sheets = self.sheets_client.get_available_sheet_names()
             if len(available_sheets) > 1:
-                sheet_context = f"You are providing information from multiple project sheets: {', '.join(available_sheets)}. " \
-                               f"When answering, specify which sheet each piece of information comes from."
+                sheet_context = (
+                    f"You are providing information from multiple project sheets: {', '.join(available_sheets)}. "
+                    "When answering, specify which sheet each piece of information comes from."
+                )
             else:
                 sheet_context = ""
         else:
             sheet_context = ""
         
         # Try OpenAI first
+        openai_error = None
         try:
             response = self.openai_client.get_chatbot_response(prompt, project_data, history, sheet_context)
             return {
@@ -82,7 +98,18 @@ class ChatbotService:
                 'error': None
             }
         except Exception as e:
+            openai_error = str(e)
             print(f"OpenAI error: {e}")
+            
+            # Check if this is an API key or configuration error
+            if "API key" in openai_error or "configuration" in openai_error or "not configured" in openai_error:
+                return {
+                    'response': "The OpenAI service is not properly configured. Please contact the administrator to set up the API key correctly.",
+                    'source': 'error',
+                    'sheet_name': None,
+                    'error': openai_error
+                }
+            
             # Fall back to Gemini
             try:
                 # Add a small delay before trying the fallback service
@@ -92,17 +119,29 @@ class ChatbotService:
                     'response': response,
                     'source': 'gemini',
                     'sheet_name': sheet_name,
-                    'error': str(e)
+                    'error': openai_error  # Include the original OpenAI error for logging
                 }
             except Exception as gemini_err:
+                gemini_error = str(gemini_err)
                 print(f"Gemini error: {gemini_err}")
+                
+                # Check if this is also an API key or configuration error
+                if "API key" in gemini_error or "configuration" in gemini_error or "not configured" in gemini_error:
+                    return {
+                        'response': "Both AI services (OpenAI and Google Gemini) are not properly configured. Please contact the administrator to set up the API keys correctly.",
+                        'source': 'error',
+                        'sheet_name': None,
+                        'error': f"OpenAI: {openai_error}, Gemini: {gemini_error}"
+                    }
+                
+                # Both services failed for other reasons
                 return {
-                    'response': "I'm sorry, I'm having trouble connecting to my services right now. Please try again later.",
+                    'response': "I'm sorry, I'm having trouble connecting to my AI services right now. Please try again later.",
                     'source': 'error',
                     'sheet_name': None,
-                    'error': str(gemini_err)
+                    'error': f"OpenAI: {openai_error}, Gemini: {gemini_error}"
                 }
-    
+
     def _is_project_related_query(self, query):
         """
         Determine if the query is related to projects
