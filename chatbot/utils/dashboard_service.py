@@ -21,81 +21,177 @@ class DashboardService:
         Returns:
             dict: Dashboard data
         """
-        if project_name:
-            # Get specific project data
-            project = self.sheets_client.get_project_by_name(project_name, sheet_name)
-            if not project:
-                return {'error': f"Project '{project_name}' not found"}
-            
-            members = self.sheets_client.get_project_members(project_name=project_name, sheet_name=sheet_name)
-            return self._generate_single_project_dashboard(project, members)
-        else:
-            # Generate overview dashboard
-            projects = self.sheets_client.get_all_projects(sheet_name) if sheet_name else self.sheets_client.get_all_projects_from_all_sheets()
-            return self._generate_overview_dashboard(projects)
+        try:
+            if project_name:
+                # Get specific project data
+                project = self.sheets_client.get_project_by_name(project_name, sheet_name)
+                if not project:
+                    return {'error': f"Project '{project_name}' not found"}
+                
+                members = self.sheets_client.get_project_members(project_name=project_name, sheet_name=sheet_name)
+                return self._generate_single_project_dashboard(project, members)
+            else:
+                # Generate overview dashboard
+                projects = self.sheets_client.get_all_projects(sheet_name) if sheet_name else self.sheets_client.get_all_projects_from_all_sheets()
+                return self._generate_overview_dashboard(projects)
+        except Exception as e:
+            print(f"Error generating dashboard: {e}")
+            return {
+                'error': str(e),
+                'projects_count': 0,
+                'status_distribution': "{}",
+                'budget': {
+                    'total': 0,
+                    'expenses': 0,
+                    'remaining': 0,
+                    'utilization_percentage': 0,
+                    'over_budget_count': 0
+                },
+                'forecast': "[]",
+                'recent_projects': []
+            }
     
     def _generate_single_project_dashboard(self, project, members):
         """Generate dashboard for a single project"""
-        # Calculate timeline progress
-        timeline_data = self._calculate_timeline_progress(project)
-        
-        # Calculate budget utilization
-        budget_data = self._calculate_budget_utilization(project)
-        
-        # Analyze team composition
-        team_data = self._analyze_team_composition(members)
-        
-        return {
-            'project': project,
-            'timeline': timeline_data,
-            'budget': budget_data,
-            'team': team_data,
-            'overview': {
-                'status': project.get('status', 'unknown'),
-                'members_count': len(members),
-                'budget_status': 'over_budget' if float(project.get('expenses', 0)) > float(project.get('budget', 0)) else 'under_budget',
-                'progress_percentage': timeline_data.get('percentage', 0)
+        try:
+            # Calculate timeline progress
+            timeline_data = self._calculate_timeline_progress(project)
+            
+            # Calculate budget utilization
+            budget_data = self._calculate_budget_utilization(project)
+            
+            # Analyze team composition
+            team_data = self._analyze_team_composition(members)
+            
+            return {
+                'project': project,
+                'timeline': timeline_data,
+                'budget': budget_data,
+                'team': team_data,
+                'overview': {
+                    'status': project.get('status', 'unknown'),
+                    'members_count': len(members),
+                    'budget_status': 'over_budget' if float(project.get('expenses', 0)) > float(project.get('budget', 0)) else 'under_budget',
+                    'progress_percentage': timeline_data.get('percentage', 0)
+                }
             }
-        }
+        except Exception as e:
+            print(f"Error generating single project dashboard: {e}")
+            return {
+                'error': str(e),
+                'project': project,
+                'timeline': {},
+                'budget': {},
+                'team': {'members': members},
+                'overview': {}
+            }
     
     def _generate_overview_dashboard(self, projects):
         """Generate overview dashboard for all projects"""
-        # Count projects by status
-        status_counts = {}
-        for project in projects:
-            status = project.get('status', 'unknown')
-            status_counts[status] = status_counts.get(status, 0) + 1
-        
-        # Calculate budget overview
-        budget_total = sum(float(p.get('budget', 0)) for p in projects)
-        expenses_total = sum(float(p.get('expenses', 0)) for p in projects)
-        over_budget_projects = [p for p in projects if float(p.get('expenses', 0)) > float(p.get('budget', 0))]
-        
-        # Monthly expense forecast (simplified example)
-        current_month = datetime.now().month
-        forecast_data = []
-        for month in range(current_month, current_month + 6):
-            # Simple forecast - actual would be more complex
-            forecast_month = (month - 1) % 12 + 1  # Keep in range 1-12
-            forecast_value = expenses_total / 6  # Simple even distribution
-            forecast_data.append({
-                'month': datetime(2025, forecast_month, 1).strftime('%b'),
-                'value': round(forecast_value, 2)
-            })
-        
-        return {
-            'projects_count': len(projects),
-            'status_distribution': status_counts,
-            'budget': {
-                'total': budget_total,
-                'expenses': expenses_total,
-                'remaining': budget_total - expenses_total,
-                'utilization_percentage': round((expenses_total / budget_total * 100) if budget_total else 0, 2),
-                'over_budget_count': len(over_budget_projects)
-            },
-            'forecast': forecast_data,
-            'recent_projects': sorted(projects, key=lambda p: p.get('start_date', '2000-01-01'), reverse=True)[:5]
-        }
+        try:
+            # Count projects by status
+            status_counts = {}
+            for project in projects:
+                status = project.get('status', 'unknown')
+                status_counts[status] = status_counts.get(status, 0) + 1
+            
+            # Calculate budget overview
+            budget_total = sum(float(p.get('budget', 0)) for p in projects)
+            expenses_total = sum(float(p.get('expenses', 0)) for p in projects)
+            over_budget_projects = [p for p in projects if float(p.get('expenses', 0)) > float(p.get('budget', 0))]
+            
+            # Calculate remaining budget (ensure it's not negative for display purposes)
+            remaining = max(0, budget_total - expenses_total)
+            utilization_percentage = round((expenses_total / budget_total * 100) if budget_total else 0, 2)
+            
+            # Monthly expense forecast
+            forecast_data = self._generate_forecast_data(projects)
+            
+            # Recent projects - sort by start date
+            try:
+                recent_projects = sorted(
+                    projects, 
+                    key=lambda p: datetime.strptime(p.get('start_date', '2000-01-01'), '%Y-%m-%d'),
+                    reverse=True
+                )[:5]
+            except (ValueError, TypeError):
+                # Fallback if date parsing fails
+                recent_projects = projects[:5]
+            
+            # Properly format data as JSON strings for the template
+            return {
+                'projects_count': len(projects),
+                'status_distribution': json.dumps(status_counts),
+                'budget': {
+                    'total': budget_total,
+                    'expenses': expenses_total,
+                    'remaining': remaining,
+                    'utilization_percentage': utilization_percentage,
+                    'over_budget_count': len(over_budget_projects)
+                },
+                'forecast': json.dumps(forecast_data),
+                'recent_projects': recent_projects
+            }
+        except Exception as e:
+            print(f"Error generating overview dashboard: {e}")
+            return {
+                'projects_count': 0,
+                'status_distribution': json.dumps({}),
+                'budget': {
+                    'total': 0,
+                    'expenses': 0,
+                    'remaining': 0,
+                    'utilization_percentage': 0,
+                    'over_budget_count': 0
+                },
+                'forecast': json.dumps([]),
+                'recent_projects': []
+            }
+    
+    def _generate_forecast_data(self, projects):
+        """Generate 6-month expense forecast data"""
+        try:
+            # Get current month and calculate forecast
+            current_month = datetime.now().month
+            current_year = datetime.now().year
+            forecast_data = []
+            
+            # Calculate total project budget
+            total_budget = sum(float(p.get('budget', 0)) for p in projects)
+            
+            # If no budget, return empty forecast
+            if total_budget == 0:
+                return []
+            
+            # Get active projects (for better forecast)
+            active_projects = [p for p in projects if p.get('status') == 'active']
+            
+            # If no active projects, use all projects
+            if not active_projects:
+                active_projects = projects
+            
+            # Calculate monthly burn rate (simple model - distribute remaining budgets over next 6 months)
+            remaining_budget = sum(max(0, float(p.get('budget', 0)) - float(p.get('expenses', 0))) for p in active_projects)
+            monthly_burn_rate = remaining_budget / 6 if remaining_budget > 0 else total_budget / 12
+            
+            # Generate forecast for next 6 months
+            for i in range(6):
+                forecast_month = (current_month + i - 1) % 12 + 1  # Keep in range 1-12
+                forecast_year = current_year + ((current_month + i) // 12)
+                
+                # Adjust burn rate with a simple model (higher in middle months)
+                adjustment = 1 + (0.1 * (3 - abs(3 - i)))  # Peaks in the middle months
+                forecast_value = monthly_burn_rate * adjustment
+                
+                forecast_data.append({
+                    'month': datetime(forecast_year, forecast_month, 1).strftime('%b'),
+                    'value': round(forecast_value, 2)
+                })
+            
+            return forecast_data
+        except Exception as e:
+            print(f"Error generating forecast data: {e}")
+            return []
     
     def _calculate_timeline_progress(self, project):
         """Calculate project timeline progress"""
@@ -130,7 +226,8 @@ class DashboardService:
                 'percentage': percentage,
                 'status': status
             }
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as e:
+            print(f"Error calculating timeline progress: {e}")
             # Return default values if dates can't be parsed
             return {
                 'start_date': project.get('start_date', 'N/A'),
@@ -144,35 +241,53 @@ class DashboardService:
     
     def _calculate_budget_utilization(self, project):
         """Calculate project budget utilization"""
-        budget = float(project.get('budget', 0))
-        expenses = float(project.get('expenses', 0))
-        
-        if budget > 0:
-            percentage = round((expenses / budget * 100), 2)
+        try:
+            budget = float(project.get('budget', 0))
+            expenses = float(project.get('expenses', 0))
+            
+            if budget > 0:
+                percentage = round((expenses / budget * 100), 2)
+                return {
+                    'budget': budget,
+                    'expenses': expenses,
+                    'remaining': budget - expenses,
+                    'percentage': percentage,
+                    'status': 'over_budget' if expenses > budget else 'under_budget'
+                }
             return {
                 'budget': budget,
                 'expenses': expenses,
-                'remaining': budget - expenses,
-                'percentage': percentage,
-                'status': 'over_budget' if expenses > budget else 'under_budget'
+                'remaining': 0,
+                'percentage': 0,
+                'status': 'unknown'
             }
-        return {
-            'budget': budget,
-            'expenses': expenses,
-            'remaining': 0,
-            'percentage': 0,
-            'status': 'unknown'
-        }
+        except (ValueError, TypeError) as e:
+            print(f"Error calculating budget utilization: {e}")
+            return {
+                'budget': 0,
+                'expenses': 0,
+                'remaining': 0,
+                'percentage': 0,
+                'status': 'unknown'
+            }
     
     def _analyze_team_composition(self, members):
         """Analyze team composition by role"""
-        role_counts = {}
-        for member in members:
-            role = member.get('role', 'Unknown')
-            role_counts[role] = role_counts.get(role, 0) + 1
-        
-        return {
-            'total_members': len(members),
-            'role_distribution': role_counts,
-            'members': members
-        }
+        try:
+            role_counts = {}
+            for member in members:
+                role = member.get('role', 'Unknown')
+                role_counts[role] = role_counts.get(role, 0) + 1
+            
+            return {
+                'total_members': len(members),
+                'role_distribution': role_counts,
+                'members': members
+            }
+        except Exception as e:
+            print(f"Error analyzing team composition: {e}")
+            return {
+                'total_members': 0,
+                'role_distribution': {},
+                'members': []
+            }
