@@ -115,7 +115,7 @@ class ChatbotService:
                 response = self.gemini_client.get_chatbot_response(prompt, project_data, history, sheet_context)
                 return {
                     'response': response,
-                    'source': 'gemini',  # Changed from 'openai' to 'gemini'
+                    'source': 'gemini',  # CHANGE THIS FROM 'openai' to 'gemini'
                     'sheet_name': sheet_name,
                     'error': openai_error  # Include the original OpenAI error for logging
                 }
@@ -127,7 +127,7 @@ class ChatbotService:
                 if "API key" in gemini_error or "configuration" in gemini_error or "not configured" in gemini_error:
                     return {
                         'response': "Both AI services (OpenAI and Google Gemini) are not properly configured. Please contact the administrator to set up the API keys correctly.",
-                        'source': 'error',
+                        'source': 'error',  # Make sure this is 'error'
                         'sheet_name': None,
                         'error': f"OpenAI: {openai_error}, Gemini: {gemini_error}"
                     }
@@ -135,7 +135,7 @@ class ChatbotService:
                 # Both services failed for other reasons
                 return {
                     'response': "I'm sorry, I'm having trouble connecting to my AI services right now. Please try again later.",
-                    'source': 'error',
+                    'source': 'error',  # Make sure this is 'error'
                     'sheet_name': None,
                     'error': f"OpenAI: {openai_error}, Gemini: {gemini_error}"
                 }

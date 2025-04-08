@@ -673,15 +673,16 @@ class EdgeCaseTest(TestCase):
         mock_openai_instance = mock_openai.return_value
         mock_gemini_instance = mock_gemini.return_value
         
-        # Config the mocks to return exceptions
+        # Configure the mocks to return exceptions
         mock_openai_instance.get_chatbot_response.side_effect = Exception("API key not configured")
         mock_gemini_instance.get_chatbot_response.side_effect = Exception("API key not configured")
         
-        # Need to properly mock self.service.get_project_data
+        # Mock get_project_data to avoid errors
         with patch.object(self.service, 'get_project_data', return_value={}):
-            # Override the _detect_sheet_name_in_query method to avoid errors
             with patch.object(self.service, '_detect_sheet_name_in_query', return_value=None):
                 response = self.service.get_response("Test prompt")
+        
+        # Assert that the source is set to "error" when both services fail
         self.assertEqual(response["source"], "error")
     
     @patch('chatbot.utils.chatbot_service.OpenAIClient')
