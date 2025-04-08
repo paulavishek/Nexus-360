@@ -2,6 +2,7 @@ import time
 from .openai_client import OpenAIClient
 from .gemini_client import GeminiClient
 from .google_sheets import GoogleSheetsClient
+from .dashboard_service import DashboardService
 
 class ChatbotService:
     """
@@ -11,6 +12,7 @@ class ChatbotService:
         self.openai_client = OpenAIClient()
         self.gemini_client = GeminiClient()
         self.sheets_client = GoogleSheetsClient()
+        self.dashboard_service = DashboardService(self.sheets_client)
         
     def get_project_data(self, sheet_name=None):
         """
@@ -35,6 +37,103 @@ class ChatbotService:
             'budget_statistics': budget_stats
         }
 
+    def _is_project_related_query(self, query):
+        """
+        Determine if the query is related to projects
+        
+        Args:
+            query (str): User query
+            
+        Returns:
+            bool: True if query is project-related, False otherwise
+        """
+        project_keywords = [
+            'project', 'projects', 'team', 'member', 'members', 'budget', 'cost',
+            'expense', 'expenses', 'over budget', 'under budget', 'status',
+            'active', 'completed', 'on hold', 'cancelled', 'team size',
+            'timeline', 'deadline', 'start date', 'end date', 'sheet', 'sheets'
+        ]
+        
+        query_lower = query.lower()
+        for keyword in project_keywords:
+            if keyword in query_lower:
+                return True
+        
+        return False
+        
+    def _detect_sheet_name_in_query(self, query):
+        """
+        Detect if the user is asking about a specific sheet by name
+        
+        Args:
+            query (str): User query
+            
+        Returns:
+            str or None: Sheet name if detected, None otherwise
+        """
+        available_sheets = self.sheets_client.get_available_sheet_names()
+        query_lower = query.lower()
+        
+        # Look for patterns like "in the X sheet" or "from sheet Y"
+        for sheet_name in available_sheets:
+            sheet_lower = sheet_name.lower()
+            patterns = [
+                f"in {sheet_lower} sheet",
+                f"from {sheet_lower} sheet",
+                f"in the {sheet_lower} sheet",
+                f"from the {sheet_lower} sheet",
+                f"in {sheet_lower}",
+                f"from {sheet_lower}",
+                f"{sheet_lower} projects",
+                f"{sheet_lower} data"
+            ]
+            
+            for pattern in patterns:
+                if pattern in query_lower:
+                    return sheet_name
+        
+        return None
+
+    def _is_dashboard_request(self, query):
+        """
+        Determine if the query is requesting a dashboard
+        
+        Args:
+            query (str): User query
+            
+        Returns:
+            bool: True if query is requesting a dashboard, False otherwise
+        """
+        dashboard_keywords = [
+            'dashboard', 'visualize', 'visualization', 'chart', 'graph',
+            'show me', 'display', 'create a', 'generate a', 'information radiator',
+            'stats', 'statistics', 'metrics', 'kpi', 'overview'
+        ]
+        
+        # Additional keywords that strongly suggest dashboard intent when paired with project terms
+        context_keywords = {
+            'project': ['create', 'generate', 'make', 'build', 'show', 'visualize'],
+            'budget': ['chart', 'breakdown', 'distribution', 'allocation'],
+            'timeline': ['progress', 'gantt', 'schedule', 'milestone'],
+            'team': ['composition', 'roles', 'structure', 'organization']
+        }
+        
+        query_lower = query.lower()
+        
+        # Check for direct dashboard keywords
+        for keyword in dashboard_keywords:
+            if keyword in query_lower:
+                return True
+        
+        # Check for context-specific dashboard requests
+        for context, keywords in context_keywords.items():
+            if context in query_lower:
+                for keyword in keywords:
+                    if keyword in query_lower:
+                        return True
+        
+        return False
+
     def get_response(self, prompt, sheet_name=None, history=None):
         """
         Get chatbot response with fallback strategy and improved error handling
@@ -48,14 +147,58 @@ class ChatbotService:
         Returns:
             dict: Response with source information
         """
-        # Check if query is related to projects (if so, fetch project data)
-        project_related = self._is_project_related_query(prompt)
+        # Check if query is requesting a dashboard
+        dashboard_request = self._is_dashboard_request(prompt)
+        if dashboard_request:
+            # Detect if query is about a specific project
+            project_name = None
+            
+            # Simple extraction - in a real implementation, you would use NLP
+            # to more accurately extract project names from queries
+            project_related = self._is_project_related_query(prompt)
+            if project_related:
+                # Get all projects to compare against
+                try:
+                    projects = self.sheets_client.get_all_projects_from_all_sheets()
+                    project_names = [p.get('name', '').lower() for p in projects]
+                    
+                    # Look for project names in the query
+                    words = prompt.lower().split()
+                    for i in range(len(words) - 1):
+                        potential_name = words[i] + ' ' + words[i+1]  # Check for two-word project names
+                        if potential_name in project_names:
+                            project_name = potential_name
+                            break
+                    
+                    if not project_name:  # Check for single-word project names
+                        for word in words:
+                            if word in project_names:
+                                project_name = word
+                                break
+                except Exception as e:
+                    print(f"Error extracting project name: {e}")
+            
+            # Return instructions for dashboard access
+            dashboard_url = f"/dashboard/{'project/' + project_name if project_name else ''}"
+            dashboard_type = "project" if project_name else "overview"
+            
+            return {
+                'response': f"I've prepared a {dashboard_type} dashboard for you. You can access it at {dashboard_url} or click the button below.",
+                'source': 'dashboard',
+                'sheet_name': sheet_name,
+                'dashboard_url': dashboard_url,
+                'dashboard_type': dashboard_type,
+                'project_name': project_name
+            }
         
-        # Check if query specifies a particular sheet
+        # Check if detected sheet name in query should override the provided sheet_name
         detected_sheet = self._detect_sheet_name_in_query(prompt)
         if detected_sheet:
             sheet_name = detected_sheet
             
+        # Check if query is related to projects (if so, fetch project data)
+        project_related = self._is_project_related_query(prompt)
+        
         # Get data from specified sheet or all sheets
         try:
             project_data = self.get_project_data(sheet_name) if project_related else None
@@ -139,60 +282,3 @@ class ChatbotService:
                     'sheet_name': None,
                     'error': f"OpenAI: {openai_error}, Gemini: {gemini_error}"
                 }
-
-    def _is_project_related_query(self, query):
-        """
-        Determine if the query is related to projects
-        
-        Args:
-            query (str): User query
-            
-        Returns:
-            bool: True if query is project-related, False otherwise
-        """
-        project_keywords = [
-            'project', 'projects', 'team', 'member', 'members', 'budget', 'cost',
-            'expense', 'expenses', 'over budget', 'under budget', 'status',
-            'active', 'completed', 'on hold', 'cancelled', 'team size',
-            'timeline', 'deadline', 'start date', 'end date', 'sheet', 'sheets'
-        ]
-        
-        query_lower = query.lower()
-        for keyword in project_keywords:
-            if keyword in query_lower:
-                return True
-        
-        return False
-        
-    def _detect_sheet_name_in_query(self, query):
-        """
-        Detect if the user is asking about a specific sheet by name
-        
-        Args:
-            query (str): User query
-            
-        Returns:
-            str or None: Sheet name if detected, None otherwise
-        """
-        available_sheets = self.sheets_client.get_available_sheet_names()
-        query_lower = query.lower()
-        
-        # Look for patterns like "in the X sheet" or "from sheet Y"
-        for sheet_name in available_sheets:
-            sheet_lower = sheet_name.lower()
-            patterns = [
-                f"in {sheet_lower} sheet",
-                f"from {sheet_lower} sheet",
-                f"in the {sheet_lower} sheet",
-                f"from the {sheet_lower} sheet",
-                f"in {sheet_lower}",
-                f"from {sheet_lower}",
-                f"{sheet_lower} projects",
-                f"{sheet_lower} data"
-            ]
-            
-            for pattern in patterns:
-                if pattern in query_lower:
-                    return sheet_name
-        
-        return None
