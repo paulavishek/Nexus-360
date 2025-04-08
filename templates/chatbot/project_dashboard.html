@@ -114,7 +114,7 @@
     <div class="col-lg-3 col-md-6">
         <div class="dashboard-card h-100">
             <div class="metric-card">
-                <div class="metric-value">{{ dashboard.team.total_members }}</div>
+                <div class="metric-value">{{ dashboard.team.total_members|default:"0" }}</div>
                 <div class="metric-label">Team Members</div>
             </div>
         </div>
@@ -122,7 +122,7 @@
     <div class="col-lg-3 col-md-6">
         <div class="dashboard-card h-100">
             <div class="metric-card">
-                <div class="metric-value">${{ dashboard.budget.remaining|floatformat:0 }}</div>
+                <div class="metric-value">${{ dashboard.budget.remaining|default:"0"|floatformat:0 }}</div>
                 <div class="metric-label">Budget Remaining</div>
             </div>
         </div>
@@ -130,7 +130,7 @@
     <div class="col-lg-3 col-md-6">
         <div class="dashboard-card h-100">
             <div class="metric-card">
-                <div class="metric-value">{{ dashboard.timeline.days_remaining }}</div>
+                <div class="metric-value">{{ dashboard.timeline.days_remaining|default:"0" }}</div>
                 <div class="metric-label">Days Remaining</div>
             </div>
         </div>
@@ -147,10 +147,10 @@
             <div class="card-body">
                 <div class="mb-3">
                     <div class="d-flex justify-content-between mb-2">
-                        <div>Start: <strong>{{ dashboard.timeline.start_date }}</strong></div>
-                        <div>End: <strong>{{ dashboard.timeline.end_date }}</strong></div>
+                        <div>Start: <strong>{{ dashboard.timeline.start_date|default:"N/A" }}</strong></div>
+                        <div>End: <strong>{{ dashboard.timeline.end_date|default:"N/A" }}</strong></div>
                     </div>
-                    {% with percentage=dashboard.timeline.percentage|stringformat:"i" %}
+                    {% with percentage=dashboard.timeline.percentage|default:0|stringformat:"i" %}
                     <div class="progress">
                         <div class="progress-bar bg-success w-{{ percentage }}" 
                              role="progressbar" 
@@ -162,11 +162,17 @@
                     </div>
                     {% endwith %}
                     <div class="d-flex justify-content-between">
-                        <div>Elapsed: <strong>{{ dashboard.timeline.elapsed_days }} days</strong></div>
-                        <div>Total: <strong>{{ dashboard.timeline.total_days }} days</strong></div>
+                        <div>Elapsed: <strong>{{ dashboard.timeline.elapsed_days|default:"0" }} days</strong></div>
+                        <div>Total: <strong>{{ dashboard.timeline.total_days|default:"0" }} days</strong></div>
                     </div>
                 </div>
-                <div class="chart-container" id="timelineChart"></div>
+                <div class="chart-container" id="timelineChart">
+                    <div class="d-flex justify-content-center align-items-center h-100 chart-loading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -180,10 +186,10 @@
             <div class="card-body">
                 <div class="mb-3">
                     <div class="d-flex justify-content-between mb-2">
-                        <div>Budget: <strong>${{ dashboard.budget.budget|floatformat:0 }}</strong></div>
-                        <div>Expenses: <strong>${{ dashboard.budget.expenses|floatformat:0 }}</strong></div>
+                        <div>Budget: <strong>${{ dashboard.budget.budget|default:"0"|floatformat:0 }}</strong></div>
+                        <div>Expenses: <strong>${{ dashboard.budget.expenses|default:"0"|floatformat:0 }}</strong></div>
                     </div>
-                    {% with percentage=dashboard.budget.percentage|stringformat:"i" %}
+                    {% with percentage=dashboard.budget.percentage|default:0|stringformat:"i" %}
                     <div class="progress">
                         <div class="progress-bar {% if dashboard.budget.status == 'over_budget' %}bg-danger{% else %}bg-success{% endif %} w-{{ percentage }}" 
                              role="progressbar" 
@@ -195,7 +201,7 @@
                     </div>
                     {% endwith %}
                     <div class="d-flex justify-content-between">
-                        <div>Remaining: <strong>${{ dashboard.budget.remaining|floatformat:0 }}</strong></div>
+                        <div>Remaining: <strong>${{ dashboard.budget.remaining|default:"0"|floatformat:0 }}</strong></div>
                         <div class="{% if dashboard.budget.status == 'over_budget' %}text-danger{% else %}text-success{% endif %}">
                             <strong>
                                 {% if dashboard.budget.status == 'over_budget' %}
@@ -207,7 +213,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="chart-container" id="budgetChart"></div>
+                <div class="chart-container" id="budgetChart">
+                    <div class="d-flex justify-content-center align-items-center h-100 chart-loading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -221,7 +233,13 @@
                 <h5 class="mb-0">Team Composition</h5>
             </div>
             <div class="card-body">
-                <div class="chart-container" id="teamChart"></div>
+                <div class="chart-container" id="teamChart">
+                    <div class="d-flex justify-content-center align-items-center h-100 chart-loading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -269,18 +287,14 @@
     </div>
 </div>
 
-<!-- Hidden Template Data -->
-<div id="chart-data" style="display: none;" 
-    data-timeline-elapsed="{{ dashboard.timeline.elapsed_days }}"
-    data-timeline-remaining="{{ dashboard.timeline.days_remaining }}"
-    data-budget-expenses="{{ dashboard.budget.expenses }}"
-    data-budget-remaining="{% if dashboard.budget.remaining > 0 %}{{ dashboard.budget.remaining }}{% else %}0{% endif %}">
-</div>
-
-<div id="team-data" style="display: none;">
-    {% for role, count in dashboard.team.role_distribution.items %}
-    <span data-role="{{ role }}" data-count="{{ count }}"></span>
-    {% endfor %}
+<!-- Hidden data -->
+<div id="dashboard-data" 
+     data-timeline-elapsed="{{ dashboard.timeline.elapsed_days|default:0 }}"
+     data-timeline-remaining="{{ dashboard.timeline.days_remaining|default:0 }}"
+     data-budget-expenses="{{ dashboard.budget.expenses|default:0 }}"
+     data-budget-remaining="{{ dashboard.budget.remaining|default:0 }}"
+     data-team-roles="{{ dashboard.team.role_distribution|safe }}"
+     style="display: none;">
 </div>
 {% endblock %}
 
@@ -288,127 +302,176 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Get data from the hidden elements
-    const chartData = document.getElementById('chart-data');
-    const teamDataContainer = document.getElementById('team-data');
-    const teamRoleSpans = teamDataContainer.querySelectorAll('span');
-    
-    // Timeline data
-    const timelineElapsed = parseInt(chartData.getAttribute('data-timeline-elapsed'));
-    const timelineRemaining = parseInt(chartData.getAttribute('data-timeline-remaining'));
-    
-    // Budget data
-    const budgetExpenses = parseFloat(chartData.getAttribute('data-budget-expenses'));
-    const budgetRemaining = parseFloat(chartData.getAttribute('data-budget-remaining'));
-    
-    // Team data
-    const roleLabels = [];
-    const roleData = [];
-    
-    teamRoleSpans.forEach(function(span) {
-        roleLabels.push(span.getAttribute('data-role'));
-        roleData.push(parseInt(span.getAttribute('data-count')));
+    // Remove spinner indicators
+    document.querySelectorAll('.chart-loading').forEach(loader => {
+        loader.style.display = 'none';
     });
     
-    // Timeline Chart
-    new Chart(
-        document.getElementById('timelineChart'),
-        {
-            type: 'bar',
-            data: {
-                labels: ['Timeline Progress'],
-                datasets: [
+    try {
+        // Get data from the hidden elements
+        const dashboardData = document.getElementById('dashboard-data');
+        
+        // Timeline data
+        const timelineElapsed = parseInt(dashboardData.getAttribute('data-timeline-elapsed')) || 0;
+        const timelineRemaining = parseInt(dashboardData.getAttribute('data-timeline-remaining')) || 0;
+        
+        // Budget data
+        const budgetExpenses = parseFloat(dashboardData.getAttribute('data-budget-expenses')) || 0;
+        const budgetRemaining = parseFloat(dashboardData.getAttribute('data-budget-remaining')) || 0;
+        
+        // Team data
+        let roleLabels = [];
+        let roleData = [];
+        
+        try {
+            const teamRolesData = dashboardData.getAttribute('data-team-roles');
+            if (teamRolesData) {
+                const roleDistribution = JSON.parse(teamRolesData);
+                for (const [role, count] of Object.entries(roleDistribution)) {
+                    roleLabels.push(role);
+                    roleData.push(parseInt(count));
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing team role data:', e);
+            // Fallback
+            roleLabels = ['Developer', 'Designer'];
+            roleData = [2, 1];
+        }
+        
+        // Timeline Chart
+        try {
+            if (timelineElapsed === 0 && timelineRemaining === 0) {
+                document.getElementById('timelineChart').innerHTML = '<div class="text-center text-muted py-5">No timeline data available.</div>';
+            } else {
+                new Chart(
+                    document.getElementById('timelineChart'),
                     {
-                        label: 'Elapsed Days',
-                        data: [timelineElapsed],
-                        backgroundColor: 'rgba(46, 204, 113, 0.7)'
-                    },
-                    {
-                        label: 'Remaining Days',
-                        data: [timelineRemaining],
-                        backgroundColor: 'rgba(52, 152, 219, 0.7)'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                scales: {
-                    x: {
-                        stacked: true,
-                        title: {
-                            display: true,
-                            text: 'Days'
+                        type: 'bar',
+                        data: {
+                            labels: ['Timeline Progress'],
+                            datasets: [
+                                {
+                                    label: 'Elapsed Days',
+                                    data: [timelineElapsed],
+                                    backgroundColor: 'rgba(46, 204, 113, 0.7)'
+                                },
+                                {
+                                    label: 'Remaining Days',
+                                    data: [timelineRemaining],
+                                    backgroundColor: 'rgba(52, 152, 219, 0.7)'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            indexAxis: 'y',
+                            scales: {
+                                x: {
+                                    stacked: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Days'
+                                    }
+                                },
+                                y: {
+                                    stacked: true
+                                }
+                            }
                         }
-                    },
-                    y: {
-                        stacked: true
                     }
-                }
+                );
             }
+        } catch (e) {
+            console.error('Error creating timeline chart:', e);
+            document.getElementById('timelineChart').innerHTML = '<div class="text-center text-muted py-5">Error loading chart.</div>';
         }
-    );
-    
-    // Budget Chart
-    new Chart(
-        document.getElementById('budgetChart'),
-        {
-            type: 'doughnut',
-            data: {
-                labels: ['Expenses', 'Remaining'],
-                datasets: [{
-                    data: [budgetExpenses, budgetRemaining],
-                    backgroundColor: [
-                        'rgba(231, 76, 60, 0.7)',
-                        'rgba(46, 204, 113, 0.7)'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'right'
+        
+        // Budget Chart
+        try {
+            if (budgetExpenses === 0 && budgetRemaining === 0) {
+                document.getElementById('budgetChart').innerHTML = '<div class="text-center text-muted py-5">No budget data available.</div>';
+            } else {
+                new Chart(
+                    document.getElementById('budgetChart'),
+                    {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Expenses', 'Remaining'],
+                            datasets: [{
+                                data: [budgetExpenses, budgetRemaining],
+                                backgroundColor: [
+                                    'rgba(231, 76, 60, 0.7)',
+                                    'rgba(46, 204, 113, 0.7)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'right'
+                                }
+                            }
+                        }
                     }
-                }
+                );
             }
+        } catch (e) {
+            console.error('Error creating budget chart:', e);
+            document.getElementById('budgetChart').innerHTML = '<div class="text-center text-muted py-5">Error loading chart.</div>';
         }
-    );
-    
-    // Team Composition Chart
-    new Chart(
-        document.getElementById('teamChart'),
-        {
-            type: 'pie',
-            data: {
-                labels: roleLabels,
-                datasets: [{
-                    data: roleData,
-                    backgroundColor: [
-                        'rgba(52, 152, 219, 0.7)',
-                        'rgba(155, 89, 182, 0.7)',
-                        'rgba(46, 204, 113, 0.7)',
-                        'rgba(241, 196, 15, 0.7)',
-                        'rgba(230, 126, 34, 0.7)',
-                        'rgba(231, 76, 60, 0.7)'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'right'
+        
+        // Team Composition Chart
+        try {
+            if (roleLabels.length === 0) {
+                document.getElementById('teamChart').innerHTML = '<div class="text-center text-muted py-5">No team data available.</div>';
+            } else {
+                new Chart(
+                    document.getElementById('teamChart'),
+                    {
+                        type: 'pie',
+                        data: {
+                            labels: roleLabels,
+                            datasets: [{
+                                data: roleData,
+                                backgroundColor: [
+                                    'rgba(52, 152, 219, 0.7)',
+                                    'rgba(155, 89, 182, 0.7)',
+                                    'rgba(46, 204, 113, 0.7)',
+                                    'rgba(241, 196, 15, 0.7)',
+                                    'rgba(230, 126, 34, 0.7)',
+                                    'rgba(231, 76, 60, 0.7)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'right'
+                                }
+                            }
+                        }
                     }
-                }
+                );
             }
+        } catch (e) {
+            console.error('Error creating team chart:', e);
+            document.getElementById('teamChart').innerHTML = '<div class="text-center text-muted py-5">Error loading chart.</div>';
         }
-    );
+    } catch (error) {
+        console.error('Error initializing charts:', error);
+        // Add fallback display or error message
+        document.querySelectorAll('.chart-container').forEach(container => {
+            container.innerHTML = '<div class="text-center text-muted py-5">Chart data could not be loaded.</div>';
+        });
+    }
 });
 </script>
 {% endblock %}

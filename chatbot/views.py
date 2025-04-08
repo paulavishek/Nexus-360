@@ -269,22 +269,35 @@ def project_dashboard(request, project_name):
     """
     View for project-specific dashboard
     """
-    dashboard_service = DashboardService()
-    
-    # Get sheet name from query parameter, if any
-    sheet_name = request.GET.get('sheet', None)
-    
-    # Get dashboard data
-    dashboard_data = dashboard_service.generate_project_dashboard(
-        project_name=project_name, 
-        sheet_name=sheet_name
-    )
-    
-    if 'error' in dashboard_data:
+    try:
+        dashboard_service = DashboardService()
+        
+        # Get sheet name from query parameter, if any
+        sheet_name = request.GET.get('sheet', None)
+        
+        # Get dashboard data
+        dashboard_data = dashboard_service.generate_project_dashboard(
+            project_name=project_name, 
+            sheet_name=sheet_name
+        )
+        
+        if 'error' in dashboard_data:
+            messages.error(request, dashboard_data['error'])
+            return render(request, 'chatbot/project_not_found.html')
+        
+        return render(request, 'chatbot/project_dashboard.html', {
+            'dashboard': dashboard_data,
+            'project_name': project_name,
+            'sheet_name': sheet_name
+        })
+    except Exception as e:
+        # Log the error
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in project_dashboard view: {e}")
+        
+        # Show error message to user
+        messages.error(request, f"An error occurred while loading the project dashboard: {str(e)}")
+        
+        # Redirect to project not found page
         return render(request, 'chatbot/project_not_found.html')
-    
-    return render(request, 'chatbot/project_dashboard.html', {
-        'dashboard': dashboard_data,
-        'project_name': project_name,
-        'sheet_name': sheet_name
-    })
