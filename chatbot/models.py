@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 class Project(models.Model):
     """
@@ -43,3 +44,13 @@ class ProjectMember(models.Model):
     
     def __str__(self):
         return f"{self.name} - {self.role} ({self.project.name})"
+    
+class UserProfile(models.Model):
+    """
+    Extended user profile for associating with projects
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    projects = models.ManyToManyField(Project, related_name='users', blank=True)
+    
+    def __str__(self):
+        return f"{self.user.username}'s Profile"
