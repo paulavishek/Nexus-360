@@ -301,6 +301,8 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    console.log('Dashboard data element:', document.getElementById('dashboard-data'));
+    console.log('Chart.js loaded:', typeof Chart !== 'undefined');
 document.addEventListener('DOMContentLoaded', function() {
     // Remove spinner indicators
     document.querySelectorAll('.chart-loading').forEach(loader => {
@@ -310,6 +312,9 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
         // Get data from the hidden elements
         const dashboardData = document.getElementById('dashboard-data');
+        
+        const statusDistributionData = dashboardData.getAttribute('data-status-distribution');
+        console.log('Status distribution data:', statusDistributionData);
         
         // Timeline data
         const timelineElapsed = parseInt(dashboardData.getAttribute('data-timeline-elapsed')) || 0;
