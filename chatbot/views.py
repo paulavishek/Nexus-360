@@ -10,6 +10,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .forms import UserRegistrationForm
+from .utils.dashboard_service import DashboardService
 
 @ensure_csrf_cookie
 @login_required(login_url='chatbot:login')
@@ -239,3 +240,51 @@ def register_view(request):
         form = UserRegistrationForm()
     
     return render(request, 'chatbot/register.html', {'form': form})
+
+@login_required(login_url='chatbot:login')
+def dashboard_overview(request):
+    """
+    View for overall dashboard
+    """
+    dashboard_service = DashboardService()
+    
+    # Get selected sheet from query parameter, if any
+    sheet_name = request.GET.get('sheet', None)
+    
+    # Get dashboard data
+    dashboard_data = dashboard_service.generate_project_dashboard(sheet_name=sheet_name)
+    
+    # Get available sheet names
+    sheets_client = dashboard_service.sheets_client
+    sheet_names = sheets_client.get_available_sheet_names()
+    
+    return render(request, 'chatbot/dashboard_overview.html', {
+        'dashboard': dashboard_data,
+        'sheet_names': sheet_names,
+        'selected_sheet': sheet_name
+    })
+
+@login_required(login_url='chatbot:login')
+def project_dashboard(request, project_name):
+    """
+    View for project-specific dashboard
+    """
+    dashboard_service = DashboardService()
+    
+    # Get sheet name from query parameter, if any
+    sheet_name = request.GET.get('sheet', None)
+    
+    # Get dashboard data
+    dashboard_data = dashboard_service.generate_project_dashboard(
+        project_name=project_name, 
+        sheet_name=sheet_name
+    )
+    
+    if 'error' in dashboard_data:
+        return render(request, 'chatbot/project_not_found.html')
+    
+    return render(request, 'chatbot/project_dashboard.html', {
+        'dashboard': dashboard_data,
+        'project_name': project_name,
+        'sheet_name': sheet_name
+    })

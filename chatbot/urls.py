@@ -12,4 +12,6 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('register/', views.register_view, name='register'),
+    path('dashboard/', views.dashboard_overview, name='dashboard_overview'),
+    path('dashboard/project/<str:project_name>/', views.project_dashboard, name='project_dashboard'),
 ]
