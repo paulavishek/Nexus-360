@@ -3,8 +3,9 @@
 {% block title %}Project Management Chatbot{% endblock %}
 
 {% block extra_css %}
+<!-- Include the enhanced CSS styles -->
 <style>
-    /* Enhanced Chat Interface Styles */
+/* Enhanced Chat Interface Styles */
 :root {
     --primary-color: #4a6fa5;
     --secondary-color: #166088;
@@ -275,7 +276,7 @@
 <div class="row justify-content-center">
     <div class="col-md-10 col-lg-8">
         <div class="welcome-message">
-            <h2>Project Management Assistant</h2>
+            <h2 class="app-title">Project Management Assistant</h2>
             <p class="text-muted">Ask me anything about your projects, team members, or budget information!</p>
             
             {% if sheet_names|length > 1 %}
@@ -293,13 +294,16 @@
         
         <div class="chat-container" id="chat-container">
             <div class="bot-message message">
-                Hello! I'm your project management assistant. 
+                <div>Hello! I'm your project management assistant. 
                 {% if sheet_names|length > 1 %}
                 I can answer questions about any of your project sheets. Use the dropdown above to focus on a specific sheet.
                 {% else %}
                 How can I help you today?
                 {% endif %}
-                <div class="message-source">OpenAI GPT-4o-mini</div>
+                </div>
+                <div class="message-source">
+                    <i class="fas fa-robot me-1"></i> OpenAI GPT-4o-mini
+                </div>
             </div>
             <div class="typing-indicator" id="typing-indicator">
                 <span class="dot"></span>
@@ -308,14 +312,16 @@
             </div>
         </div>
         
-        <div class="input-group mb-3">
-            <input type="text" class="form-control" id="user-input" placeholder="Type your message here..." aria-label="User message">
-            <button class="btn send-btn" type="button" id="send-btn">
-                <i class="fas fa-paper-plane"></i>
-            </button>
+        <div class="input-area">
+            <div class="input-group">
+                <input type="text" class="form-control" id="user-input" placeholder="Type your message here..." aria-label="User message">
+                <button class="btn send-btn" type="button" id="send-btn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
         </div>
         
-        <p class="text-center text-muted small">
+        <p class="text-center text-muted small mt-3">
             <i class="fas fa-info-circle me-1"></i> 
             This chatbot uses OpenAI GPT-4o-mini with Google Gemini as a fallback
         </p>
@@ -350,15 +356,45 @@
             return cookieValue;
         }
 
+        // Function to enhance message formatting
+        function formatMessage(content) {
+            // Simple Markdown-like formatting for code
+            // Convert code blocks (```code```)
+            if (content.includes('```')) {
+                content = content.replace(/```(?:(\w+)\n)?([\s\S]*?)```/g, function(match, language, code) {
+                    return `<pre><code>${code.trim()}</code></pre>`;
+                });
+            }
+            
+            // Convert inline code (`code`)
+            content = content.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // Convert line breaks to <br>
+            content = content.replace(/\n/g, '<br>');
+            
+            return content;
+        }
+
         // Function to add a new message to the chat
         function addMessage(content, sender, source = null, sheetName = null, dashboardUrl = null) {
             const messageClass = sender === 'user' ? 'user-message' : 'bot-message';
-            let messageHTML = `<div class="${messageClass} message">${content}`;
+            
+            // Format the message content for the bot
+            const formattedContent = sender === 'user' ? content : formatMessage(content);
+            
+            let messageHTML = `<div class="${messageClass} message">`;
+            messageHTML += `<div>${formattedContent}</div>`;
 
             if (sender !== 'user') {
                 let sourceInfo = '';
                 if (source) {
-                    sourceInfo += source;
+                    if (source === 'openai') {
+                        sourceInfo += '<i class="fas fa-robot me-1"></i> OpenAI GPT-4o-mini';
+                    } else if (source === 'gemini') {
+                        sourceInfo += '<i class="fas fa-robot me-1"></i> Google Gemini';
+                    } else {
+                        sourceInfo += source;
+                    }
                 }
                 if (sheetName) {
                     sourceInfo += ` <span class="badge bg-secondary sheet-badge">Sheet: ${sheetName}</span>`;
