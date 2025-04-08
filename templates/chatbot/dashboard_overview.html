@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | PM Chatbot{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transition: transform 0.3s;
+        margin-bottom: 1.5rem;
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .stat-number {
+        font-size: 2.2rem;
+        font-weight: 600;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 1rem;
+    }
+    
+    .project-row {
+        transition: background-color 0.2s;
+    }
+    
+    .project-row:hover {
+        background-color: rgba(0,0,0,0.02);
+    }
+    
+    .mini-chart {
+        height: 50px;
+        width: 100%;
+    }
+    
+    .chart-container {
+        height: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h1>Projects Dashboard</h1>
+        <p class="text-muted">Overview of all projects and key metrics</p>
+    </div>
+    <div class="col-md-6 text-end">
+        {% if sheet_names|length > 1 %}
+        <form method="get" action="{% url 'chatbot:dashboard_overview' %}" class="d-inline-block me-2">
+            <select name="sheet" class="form-select d-inline-block" style="width: auto;" onchange="this.form.submit()">
+                <option value="">All Sheets</option>
+                {% for name in sheet_names %}
+                    <option value="{{ name }}" {% if selected_sheet == name %}selected{% endif %}>
+                        {{ name|title }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+        
+        <a href="{% url 'chatbot:projects' %}" class="btn btn-secondary me-2">
+            <i class="fas fa-list me-1"></i>View Projects
+        </a>
+        <a href="{% url 'chatbot:index' %}" class="btn btn-primary">
+            <i class="fas fa-comments me-1"></i>Ask Chatbot
+        </a>
+    </div>
+</div>
+
+<!-- Key Metrics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="dashboard-card bg-primary bg-opacity-10 h-100">
+            <div class="card-body text-center p-4">
+                <div class="stat-number">{{ dashboard.projects_count }}</div>
+                <div class="stat-label">Total Projects</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dashboard-card bg-success bg-opacity-10 h-100">
+            <div class="card-body text-center p-4">
+                <div class="stat-number">${{ dashboard.budget.total|floatformat:0 }}</div>
+                <div class="stat-label">Total Budget</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dashboard-card bg-warning bg-opacity-10 h-100">
+            <div class="card-body text-center p-4">
+                <div class="stat-number">${{ dashboard.budget.expenses|floatformat:0 }}</div>
+                <div class="stat-label">Total Expenses</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dashboard-card bg-danger bg-opacity-10 h-100">
+            <div class="card-body text-center p-4">
+                <div class="stat-number">{{ dashboard.budget.over_budget_count }}</div>
+                <div class="stat-label">Over Budget Projects</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Project Status Distribution -->
+    <div class="col-lg-6 mb-4">
+        <div class="dashboard-card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Projects by Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" id="statusChart"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Budget Utilization -->
+    <div class="col-lg-6 mb-4">
+        <div class="dashboard-card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Budget Utilization</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" id="budgetChart"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Expense Forecast -->
+    <div class="col-lg-6 mb-4">
+        <div class="dashboard-card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">6-Month Expense Forecast</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" id="forecastChart"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Projects -->
+    <div class="col-lg-6 mb-4">
+        <div class="dashboard-card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Projects</h5>
+                <a href="{% url 'chatbot:projects' %}" class="btn btn-sm btn-outline-secondary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Status</th>
+                                <th>Budget</th>
+                                <th>Start Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for project in dashboard.recent_projects %}
+                                <tr class="project-row">
+                                    <td>
+                                        <a href="{% url 'chatbot:project_dashboard' project_name=project.name %}" class="text-decoration-none">
+                                            {{ project.name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if project.status == 'active' %}bg-success{% elif project.status == 'completed' %}bg-info{% elif project.status == 'on_hold' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                            {{ project.status|title }}
+                                        </span>
+                                    </td>
+                                    <td>${{ project.budget }}</td>
+                                    <td>{{ project.start_date }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{ dashboard.forecast|json_script:"forecast-data" }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Status Distribution Chart
+        const statusDistribution = JSON.parse('{{ dashboard.status_distribution|json_script:"status-data"|safe }}');
+        const statusLabels = [];
+        const statusData = [];
+        
+        // Process the data
+        for (const [status, count] of Object.entries(statusDistribution)) {
+            statusLabels.push(status.charAt(0).toUpperCase() + status.slice(1));
+            statusData.push(count);
+        }
+        
+        const statusChart = new Chart(
+            document.getElementById('statusChart'),
+            {
+                type: 'pie',
+                data: {
+                    labels: statusLabels,
+                    datasets: [{
+                        data: statusData,
+                        backgroundColor: [
+                            'rgba(74, 111, 165, 0.7)',
+                            'rgba(22, 96, 136, 0.7)',
+                            'rgba(79, 195, 161, 0.7)',
+                            'rgba(231, 76, 60, 0.7)',
+                            'rgba(241, 196, 15, 0.7)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        }
+                    }
+                }
+            }
+        );
+        
+        // Budget Utilization Chart
+        const budgetExpenses = parseFloat('{{ dashboard.budget.expenses|floatformat:0 }}'.replace(/,/g, ''));
+        const budgetRemaining = parseFloat('{{ dashboard.budget.remaining|floatformat:0 }}'.replace(/,/g, ''));
+        
+        const budgetChart = new Chart(
+            document.getElementById('budgetChart'),
+            {
+                type: 'doughnut',
+                data: {
+                    labels: ['Expenses', 'Remaining'],
+                    datasets: [{
+                        data: [
+                            budgetExpenses,
+                            budgetRemaining
+                        ],
+                        backgroundColor: [
+                            'rgba(231, 76, 60, 0.7)',
+                            'rgba(46, 204, 113, 0.7)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        }
+                    }
+                }
+            }
+        );
+        // Forecast Chart
+        const forecast = JSON.parse(document.getElementById('forecast-data').textContent);
+        const months = [];
+        const forecastData = [];
+        
+        forecast.forEach(item => {
+            months.push(item.month);
+            forecastData.push(item.value);
+        });
+        
+        const forecastChart = new Chart(
+            document.getElementById('forecastChart'),
+            {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Projected Expenses',
+                        data: forecastData,
+                        borderColor: 'rgba(22, 96, 136, 1)',
+                        backgroundColor: 'rgba(22, 96, 136, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Amount ($)'
+                            }
+                        }
+                    }
+                }
+            }
+        );
+    });
+</script>
+{% endblock %}
