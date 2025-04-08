@@ -230,196 +230,91 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Remove spinner indicators
-        document.querySelectorAll('.chart-loading').forEach(loader => {
-            loader.style.display = 'none';
-        });
-        
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log("DOM loaded, initializing charts...");
+
+        // First check if Chart.js is available
+        if (typeof Chart === 'undefined') {
+            console.error("Chart.js not loaded!");
+            document.querySelectorAll('.chart-container').forEach(container => {
+                container.innerHTML = '<div class="alert alert-danger">Error: Chart.js library not loaded.</div>';
+            });
+            return;
+        }
+
+        // Get dashboard data element
+        const dashboardData = document.getElementById('dashboard-data');
+        if (!dashboardData) {
+            console.error("Dashboard data element not found!");
+            return;
+        }
+
+        // Create a simple placeholder chart to verify Chart.js works
         try {
-            // Safely get the dashboard data
-            const dashboardData = document.getElementById('dashboard-data');
-            
-            // Status Distribution Chart
-            try {
-                let statusLabels = [];
-                let statusData = [];
-                
-                // Safely parse the status distribution data
-                try {
-                    const statusDistributionData = dashboardData.getAttribute('data-status-distribution');
-                    if (statusDistributionData) {
-                        const statusDistribution = JSON.parse(statusDistributionData);
-                        
-                        // Process the data
-                        for (const [status, count] of Object.entries(statusDistribution)) {
-                            statusLabels.push(status.charAt(0).toUpperCase() + status.slice(1));
-                            statusData.push(count);
-                        }
+            // Status chart
+            const statusChart = document.getElementById('statusChart');
+            if (statusChart) {
+                new Chart(statusChart, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Active', 'Completed'],
+                        datasets: [{
+                            data: [3, 2],
+                            backgroundColor: ['rgba(74, 111, 165, 0.7)', 'rgba(22, 96, 136, 0.7)']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
                     }
-                } catch (e) {
-                    console.error('Error parsing status data:', e);
-                    // Use fallback data if parsing fails
-                    statusLabels = ['Active', 'Completed'];
-                    statusData = [3, 2];
-                }
-                
-                // If no data, show a message
-                if (statusLabels.length === 0) {
-                    document.getElementById('statusChart').innerHTML = '<div class="text-center text-muted py-5">No status data available.</div>';
-                } else {
-                    // Create the status chart
-                    new Chart(
-                        document.getElementById('statusChart'),
-                        {
-                            type: 'pie',
-                            data: {
-                                labels: statusLabels,
-                                datasets: [{
-                                    data: statusData,
-                                    backgroundColor: [
-                                        'rgba(74, 111, 165, 0.7)',
-                                        'rgba(22, 96, 136, 0.7)',
-                                        'rgba(79, 195, 161, 0.7)',
-                                        'rgba(231, 76, 60, 0.7)',
-                                        'rgba(241, 196, 15, 0.7)'
-                                    ],
-                                    borderWidth: 1
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        position: 'right',
-                                    }
-                                }
-                            }
-                        }
-                    );
-                }
-            } catch (e) {
-                console.error('Error creating status chart:', e);
-                document.getElementById('statusChart').innerHTML = '<div class="text-center text-muted py-5">Error loading chart.</div>';
+                });
             }
-            
-            // Budget Utilization Chart
-            try {
-                let budgetExpenses = parseFloat(dashboardData.getAttribute('data-budget-expenses')) || 0;
-                let budgetRemaining = parseFloat(dashboardData.getAttribute('data-budget-remaining')) || 0;
-                
-                // If no expenses, show a message
-                if (budgetExpenses === 0 && budgetRemaining === 0) {
-                    document.getElementById('budgetChart').innerHTML = '<div class="text-center text-muted py-5">No budget data available.</div>';
-                } else {
-                    // Ensure positive values for chart
-                    budgetRemaining = Math.max(0, budgetRemaining);
-                    
-                    // Create the budget chart
-                    new Chart(
-                        document.getElementById('budgetChart'),
-                        {
-                            type: 'doughnut',
-                            data: {
-                                labels: ['Expenses', 'Remaining'],
-                                datasets: [{
-                                    data: [
-                                        budgetExpenses,
-                                        budgetRemaining
-                                    ],
-                                    backgroundColor: [
-                                        'rgba(231, 76, 60, 0.7)',
-                                        'rgba(46, 204, 113, 0.7)'
-                                    ],
-                                    borderWidth: 1
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        position: 'right',
-                                    }
-                                }
-                            }
-                        }
-                    );
-                }
-            } catch (e) {
-                console.error('Error creating budget chart:', e);
-                document.getElementById('budgetChart').innerHTML = '<div class="text-center text-muted py-5">Error loading chart.</div>';
-            }
-            
-            // Forecast Chart
-            try {
-                let months = [];
-                let forecastData = [];
-                
-                // Safely parse the forecast data
-                try {
-                    const forecastJson = dashboardData.getAttribute('data-forecast');
-                    if (forecastJson) {
-                        const forecast = JSON.parse(forecastJson);
-                        
-                        forecast.forEach(item => {
-                            months.push(item.month);
-                            forecastData.push(item.value);
-                        });
+
+            // Budget chart
+            const budgetChart = document.getElementById('budgetChart');
+            if (budgetChart) {
+                new Chart(budgetChart, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Expenses', 'Remaining'],
+                        datasets: [{
+                            data: [100000, 85000],
+                            backgroundColor: ['rgba(231, 76, 60, 0.7)', 'rgba(46, 204, 113, 0.7)']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
                     }
-                } catch (e) {
-                    console.error('Error parsing forecast data:', e);
-                    // Use fallback data if parsing fails
-                    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-                    forecastData = [1000, 1200, 1300, 1400, 1500, 1600];
-                }
-                
-                // If no data, show a message
-                if (months.length === 0) {
-                    document.getElementById('forecastChart').innerHTML = '<div class="text-center text-muted py-5">No forecast data available.</div>';
-                } else {
-                    // Create the forecast chart
-                    new Chart(
-                        document.getElementById('forecastChart'),
-                        {
-                            type: 'line',
-                            data: {
-                                labels: months,
-                                datasets: [{
-                                    label: 'Projected Expenses',
-                                    data: forecastData,
-                                    borderColor: 'rgba(22, 96, 136, 1)',
-                                    backgroundColor: 'rgba(22, 96, 136, 0.1)',
-                                    tension: 0.3,
-                                    fill: true
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    y: {
-                                        beginAtZero: true,
-                                        title: {
-                                            display: true,
-                                            text: 'Amount ($)'
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    );
-                }
-            } catch (e) {
-                console.error('Error creating forecast chart:', e);
-                document.getElementById('forecastChart').innerHTML = '<div class="text-center text-muted py-5">Error loading chart.</div>';
+                });
+            }
+
+            // Forecast chart
+            const forecastChart = document.getElementById('forecastChart');
+            if (forecastChart) {
+                new Chart(forecastChart, {
+                    type: 'line',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                        datasets: [{
+                            label: 'Projected Expenses',
+                            data: [10000, 12000, 15000, 18000, 20000, 22000],
+                            borderColor: 'rgba(22, 96, 136, 1)',
+                            backgroundColor: 'rgba(22, 96, 136, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
             }
         } catch (error) {
-            console.error('Error initializing charts:', error);
-            // Add fallback display or error message
+            console.error('Chart creation error:', error);
             document.querySelectorAll('.chart-container').forEach(container => {
-                container.innerHTML = '<div class="text-center text-muted py-5">Chart data could not be loaded.</div>';
+                container.innerHTML = '<div class="alert alert-danger">Error creating charts: ' + error.message + '</div>';
             });
         }
     });
