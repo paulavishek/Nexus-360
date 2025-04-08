@@ -34,8 +34,6 @@ class ChatbotService:
             'members': members,
             'budget_statistics': budget_stats
         }
-    
-    # Update this method in chatbot/utils/chatbot_service.py
 
     def get_response(self, prompt, sheet_name=None, history=None):
         """
@@ -101,24 +99,45 @@ class ChatbotService:
             openai_error = str(e)
             print(f"OpenAI error: {e}")
             
+            # Check if this is an API key or configuration error
+            if "API key" in openai_error or "configuration" in openai_error or "not configured" in openai_error:
+                return {
+                    'response': "The OpenAI service is not properly configured. Please contact the administrator to set up the API key correctly.",
+                    'source': 'error',
+                    'sheet_name': None,
+                    'error': openai_error
+                }
+            
             # Fall back to Gemini
             try:
-                # Add a small delay before trying fallback service
+                # Add a small delay before trying the fallback service
                 time.sleep(0.5)
                 response = self.gemini_client.get_chatbot_response(prompt, project_data, history, sheet_context)
                 return {
                     'response': response,
-                    'source': 'gemini',  # Make sure this is 'gemini' not 'openai'
+                    'source': 'gemini',  # Changed from 'openai' to 'gemini'
                     'sheet_name': sheet_name,
-                    'error': openai_error
+                    'error': openai_error  # Include the original OpenAI error for logging
                 }
             except Exception as gemini_err:
-                # Both APIs failed
+                gemini_error = str(gemini_err)
+                print(f"Gemini error: {gemini_err}")
+                
+                # Check if this is also an API key or configuration error
+                if "API key" in gemini_error or "configuration" in gemini_error or "not configured" in gemini_error:
+                    return {
+                        'response': "Both AI services (OpenAI and Google Gemini) are not properly configured. Please contact the administrator to set up the API keys correctly.",
+                        'source': 'error',
+                        'sheet_name': None,
+                        'error': f"OpenAI: {openai_error}, Gemini: {gemini_error}"
+                    }
+                
+                # Both services failed for other reasons
                 return {
                     'response': "I'm sorry, I'm having trouble connecting to my AI services right now. Please try again later.",
-                    'source': 'error',  # Make sure this is 'error'
+                    'source': 'error',
                     'sheet_name': None,
-                    'error': f"OpenAI: {openai_error}, Gemini: {str(gemini_err)}"
+                    'error': f"OpenAI: {openai_error}, Gemini: {gemini_error}"
                 }
 
     def _is_project_related_query(self, query):

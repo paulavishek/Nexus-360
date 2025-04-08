@@ -537,15 +537,17 @@ class ProjectDisplayTest(TestCase):
         # Mock the sheets client methods
         instance = mock_sheets.return_value
         
-        # Mock project details with all required fields
+        # Mock project details with ALL required fields
+        # Make sure to include every field used in the template
         instance.get_project_by_name.return_value = {
             'name': 'Project A', 
             'description': 'Test project',
             'status': 'active',
-            'budget': '10000.00',  # Add numeric value as string
-            'expenses': '5000.00',  # Add numeric value as string
+            'budget': 10000.00,  # Use a numeric value, not string
+            'expenses': 5000.00,  # Use a numeric value, not string
             'start_date': '2025-01-01',
-            'end_date': '2025-12-31'
+            'end_date': '2025-12-31',
+            'source_sheet': 'default'  # Add this if your template uses it
         }
         
         # Mock project members
