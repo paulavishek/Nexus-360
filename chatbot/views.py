@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from .forms import UserRegistrationForm
 
 @ensure_csrf_cookie
 @login_required(login_url='chatbot:login')
@@ -221,3 +222,20 @@ def logout_view(request):
     logout(request)
     messages.success(request, 'You have been logged out successfully')
     return redirect('chatbot:login')
+
+def register_view(request):
+    """View for user registration"""
+    if request.user.is_authenticated:
+        return redirect('chatbot:index')
+        
+    if request.method == 'POST':
+        form = UserRegistrationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data.get('username')
+            messages.success(request, f'Account created for {username}. You can now log in.')
+            return redirect('chatbot:login')
+    else:
+        form = UserRegistrationForm()
+    
+    return render(request, 'chatbot/register.html', {'form': form})
