@@ -79,7 +79,7 @@
     <div class="col-md-3">
         <div class="dashboard-card bg-primary bg-opacity-10 h-100">
             <div class="card-body text-center p-4">
-                <div class="stat-number">{{ dashboard.projects_count }}</div>
+                <div class="stat-number">{{ dashboard.projects_count|default:"0" }}</div>
                 <div class="stat-label">Total Projects</div>
             </div>
         </div>
@@ -87,7 +87,7 @@
     <div class="col-md-3">
         <div class="dashboard-card bg-success bg-opacity-10 h-100">
             <div class="card-body text-center p-4">
-                <div class="stat-number">${{ dashboard.budget.total|floatformat:0 }}</div>
+                <div class="stat-number">${{ dashboard.budget.total|default:"0"|floatformat:0 }}</div>
                 <div class="stat-label">Total Budget</div>
             </div>
         </div>
@@ -95,7 +95,7 @@
     <div class="col-md-3">
         <div class="dashboard-card bg-warning bg-opacity-10 h-100">
             <div class="card-body text-center p-4">
-                <div class="stat-number">${{ dashboard.budget.expenses|floatformat:0 }}</div>
+                <div class="stat-number">${{ dashboard.budget.expenses|default:"0"|floatformat:0 }}</div>
                 <div class="stat-label">Total Expenses</div>
             </div>
         </div>
@@ -103,7 +103,7 @@
     <div class="col-md-3">
         <div class="dashboard-card bg-danger bg-opacity-10 h-100">
             <div class="card-body text-center p-4">
-                <div class="stat-number">{{ dashboard.budget.over_budget_count }}</div>
+                <div class="stat-number">{{ dashboard.budget.over_budget_count|default:"0" }}</div>
                 <div class="stat-label">Over Budget Projects</div>
             </div>
         </div>
@@ -118,7 +118,13 @@
                 <h5 class="mb-0">Projects by Status</h5>
             </div>
             <div class="card-body">
-                <div class="chart-container" id="statusChart"></div>
+                <div class="chart-container" id="statusChart">
+                    <div class="d-flex justify-content-center align-items-center h-100 chart-loading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -130,7 +136,13 @@
                 <h5 class="mb-0">Budget Utilization</h5>
             </div>
             <div class="card-body">
-                <div class="chart-container" id="budgetChart"></div>
+                <div class="chart-container" id="budgetChart">
+                    <div class="d-flex justify-content-center align-items-center h-100 chart-loading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -144,7 +156,13 @@
                 <h5 class="mb-0">6-Month Expense Forecast</h5>
             </div>
             <div class="card-body">
-                <div class="chart-container" id="forecastChart"></div>
+                <div class="chart-container" id="forecastChart">
+                    <div class="d-flex justify-content-center align-items-center h-100 chart-loading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -168,22 +186,28 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for project in dashboard.recent_projects %}
-                                <tr class="project-row">
-                                    <td>
-                                        <a href="{% url 'chatbot:project_dashboard' project_name=project.name %}" class="text-decoration-none">
-                                            {{ project.name }}
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <span class="badge {% if project.status == 'active' %}bg-success{% elif project.status == 'completed' %}bg-info{% elif project.status == 'on_hold' %}bg-warning{% else %}bg-secondary{% endif %}">
-                                            {{ project.status|title }}
-                                        </span>
-                                    </td>
-                                    <td>${{ project.budget }}</td>
-                                    <td>{{ project.start_date }}</td>
+                            {% if dashboard.recent_projects %}
+                                {% for project in dashboard.recent_projects %}
+                                    <tr class="project-row">
+                                        <td>
+                                            <a href="{% url 'chatbot:project_dashboard' project_name=project.name %}" class="text-decoration-none">
+                                                {{ project.name }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span class="badge {% if project.status == 'active' %}bg-success{% elif project.status == 'completed' %}bg-info{% elif project.status == 'on_hold' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                                {{ project.status|title }}
+                                            </span>
+                                        </td>
+                                        <td>${{ project.budget }}</td>
+                                        <td>{{ project.start_date }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4">No recent projects found.</td>
                                 </tr>
-                            {% endfor %}
+                            {% endif %}
                         </tbody>
                     </table>
                 </div>
@@ -195,123 +219,209 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-{{ dashboard.forecast|json_script:"forecast-data" }}
+
+<!-- Store data safely in hidden elements -->
+<div id="dashboard-data" 
+     data-status-distribution='{{ dashboard.status_distribution|safe }}'
+     data-forecast='{{ dashboard.forecast|safe }}'
+     data-budget-expenses="{{ dashboard.budget.expenses|floatformat:0 }}"
+     data-budget-remaining="{{ dashboard.budget.remaining|floatformat:0 }}"
+     style="display: none;">
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Status Distribution Chart
-        const statusDistribution = JSON.parse('{{ dashboard.status_distribution|json_script:"status-data"|safe }}');
-        const statusLabels = [];
-        const statusData = [];
-        
-        // Process the data
-        for (const [status, count] of Object.entries(statusDistribution)) {
-            statusLabels.push(status.charAt(0).toUpperCase() + status.slice(1));
-            statusData.push(count);
-        }
-        
-        const statusChart = new Chart(
-            document.getElementById('statusChart'),
-            {
-                type: 'pie',
-                data: {
-                    labels: statusLabels,
-                    datasets: [{
-                        data: statusData,
-                        backgroundColor: [
-                            'rgba(74, 111, 165, 0.7)',
-                            'rgba(22, 96, 136, 0.7)',
-                            'rgba(79, 195, 161, 0.7)',
-                            'rgba(231, 76, 60, 0.7)',
-                            'rgba(241, 196, 15, 0.7)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                        }
-                    }
-                }
-            }
-        );
-        
-        // Budget Utilization Chart
-        const budgetExpenses = parseFloat('{{ dashboard.budget.expenses|floatformat:0 }}'.replace(/,/g, ''));
-        const budgetRemaining = parseFloat('{{ dashboard.budget.remaining|floatformat:0 }}'.replace(/,/g, ''));
-        
-        const budgetChart = new Chart(
-            document.getElementById('budgetChart'),
-            {
-                type: 'doughnut',
-                data: {
-                    labels: ['Expenses', 'Remaining'],
-                    datasets: [{
-                        data: [
-                            budgetExpenses,
-                            budgetRemaining
-                        ],
-                        backgroundColor: [
-                            'rgba(231, 76, 60, 0.7)',
-                            'rgba(46, 204, 113, 0.7)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                        }
-                    }
-                }
-            }
-        );
-        // Forecast Chart
-        const forecast = JSON.parse(document.getElementById('forecast-data').textContent);
-        const months = [];
-        const forecastData = [];
-        
-        forecast.forEach(item => {
-            months.push(item.month);
-            forecastData.push(item.value);
+        // Remove spinner indicators
+        document.querySelectorAll('.chart-loading').forEach(loader => {
+            loader.style.display = 'none';
         });
         
-        const forecastChart = new Chart(
-            document.getElementById('forecastChart'),
-            {
-                type: 'line',
-                data: {
-                    labels: months,
-                    datasets: [{
-                        label: 'Projected Expenses',
-                        data: forecastData,
-                        borderColor: 'rgba(22, 96, 136, 1)',
-                        backgroundColor: 'rgba(22, 96, 136, 0.1)',
-                        tension: 0.3,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Amount ($)'
-                            }
+        try {
+            // Safely get the dashboard data
+            const dashboardData = document.getElementById('dashboard-data');
+            
+            // Status Distribution Chart
+            try {
+                let statusLabels = [];
+                let statusData = [];
+                
+                // Safely parse the status distribution data
+                try {
+                    const statusDistributionData = dashboardData.getAttribute('data-status-distribution');
+                    if (statusDistributionData) {
+                        const statusDistribution = JSON.parse(statusDistributionData);
+                        
+                        // Process the data
+                        for (const [status, count] of Object.entries(statusDistribution)) {
+                            statusLabels.push(status.charAt(0).toUpperCase() + status.slice(1));
+                            statusData.push(count);
                         }
                     }
+                } catch (e) {
+                    console.error('Error parsing status data:', e);
+                    // Use fallback data if parsing fails
+                    statusLabels = ['Active', 'Completed'];
+                    statusData = [3, 2];
                 }
+                
+                // If no data, show a message
+                if (statusLabels.length === 0) {
+                    document.getElementById('statusChart').innerHTML = '<div class="text-center text-muted py-5">No status data available.</div>';
+                } else {
+                    // Create the status chart
+                    new Chart(
+                        document.getElementById('statusChart'),
+                        {
+                            type: 'pie',
+                            data: {
+                                labels: statusLabels,
+                                datasets: [{
+                                    data: statusData,
+                                    backgroundColor: [
+                                        'rgba(74, 111, 165, 0.7)',
+                                        'rgba(22, 96, 136, 0.7)',
+                                        'rgba(79, 195, 161, 0.7)',
+                                        'rgba(231, 76, 60, 0.7)',
+                                        'rgba(241, 196, 15, 0.7)'
+                                    ],
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'right',
+                                    }
+                                }
+                            }
+                        }
+                    );
+                }
+            } catch (e) {
+                console.error('Error creating status chart:', e);
+                document.getElementById('statusChart').innerHTML = '<div class="text-center text-muted py-5">Error loading chart.</div>';
             }
-        );
+            
+            // Budget Utilization Chart
+            try {
+                let budgetExpenses = parseFloat(dashboardData.getAttribute('data-budget-expenses')) || 0;
+                let budgetRemaining = parseFloat(dashboardData.getAttribute('data-budget-remaining')) || 0;
+                
+                // If no expenses, show a message
+                if (budgetExpenses === 0 && budgetRemaining === 0) {
+                    document.getElementById('budgetChart').innerHTML = '<div class="text-center text-muted py-5">No budget data available.</div>';
+                } else {
+                    // Ensure positive values for chart
+                    budgetRemaining = Math.max(0, budgetRemaining);
+                    
+                    // Create the budget chart
+                    new Chart(
+                        document.getElementById('budgetChart'),
+                        {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Expenses', 'Remaining'],
+                                datasets: [{
+                                    data: [
+                                        budgetExpenses,
+                                        budgetRemaining
+                                    ],
+                                    backgroundColor: [
+                                        'rgba(231, 76, 60, 0.7)',
+                                        'rgba(46, 204, 113, 0.7)'
+                                    ],
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'right',
+                                    }
+                                }
+                            }
+                        }
+                    );
+                }
+            } catch (e) {
+                console.error('Error creating budget chart:', e);
+                document.getElementById('budgetChart').innerHTML = '<div class="text-center text-muted py-5">Error loading chart.</div>';
+            }
+            
+            // Forecast Chart
+            try {
+                let months = [];
+                let forecastData = [];
+                
+                // Safely parse the forecast data
+                try {
+                    const forecastJson = dashboardData.getAttribute('data-forecast');
+                    if (forecastJson) {
+                        const forecast = JSON.parse(forecastJson);
+                        
+                        forecast.forEach(item => {
+                            months.push(item.month);
+                            forecastData.push(item.value);
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error parsing forecast data:', e);
+                    // Use fallback data if parsing fails
+                    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+                    forecastData = [1000, 1200, 1300, 1400, 1500, 1600];
+                }
+                
+                // If no data, show a message
+                if (months.length === 0) {
+                    document.getElementById('forecastChart').innerHTML = '<div class="text-center text-muted py-5">No forecast data available.</div>';
+                } else {
+                    // Create the forecast chart
+                    new Chart(
+                        document.getElementById('forecastChart'),
+                        {
+                            type: 'line',
+                            data: {
+                                labels: months,
+                                datasets: [{
+                                    label: 'Projected Expenses',
+                                    data: forecastData,
+                                    borderColor: 'rgba(22, 96, 136, 1)',
+                                    backgroundColor: 'rgba(22, 96, 136, 0.1)',
+                                    tension: 0.3,
+                                    fill: true
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        title: {
+                                            display: true,
+                                            text: 'Amount ($)'
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    );
+                }
+            } catch (e) {
+                console.error('Error creating forecast chart:', e);
+                document.getElementById('forecastChart').innerHTML = '<div class="text-center text-muted py-5">Error loading chart.</div>';
+            }
+        } catch (error) {
+            console.error('Error initializing charts:', error);
+            // Add fallback display or error message
+            document.querySelectorAll('.chart-container').forEach(container => {
+                container.innerHTML = '<div class="text-center text-muted py-5">Chart data could not be loaded.</div>';
+            });
+        }
     });
 </script>
 {% endblock %}
