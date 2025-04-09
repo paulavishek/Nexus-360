@@ -62,6 +62,42 @@
             --table-row-hover: rgba(255, 255, 255, 0.05);
             --card-header-bg: linear-gradient(to right, #1a7baf, #5b84c7);
         }
+        
+        /* Fix Starred Messages Modal for Dark Mode */
+        [data-theme="dark"] #starredMessagesModal .modal-content {
+            background-color: #1e1e1e;
+            color: #e9ecef;
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        [data-theme="dark"] #starredMessagesModal .modal-header,
+        [data-theme="dark"] #starredMessagesModal .modal-footer {
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        [data-theme="dark"] #starredMessagesModal .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%);
+        }
+
+        /* Fix the starred message containers */
+        [data-theme="dark"] #starredMessagesModal .starred-message.bg-light {
+            background-color: #2a2a2a !important;
+            color: #e9ecef;
+        }
+
+        [data-theme="dark"] #starredMessagesModal .starred-message {
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Ensure proper contrast for timestamps and sender names */
+        [data-theme="dark"] #starredMessagesModal .starred-message small {
+            color: #adb5bd;
+        }
+
+        /* Adjust the modal appearance to match the rest of the dark theme */
+        [data-theme="dark"] #starredMessagesModal .modal-header .modal-title {
+            color: #fff;
+        }
     
         /* Improve form elements in dark mode */
         [data-theme="dark"] .form-control,
