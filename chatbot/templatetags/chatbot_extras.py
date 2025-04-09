@@ -48,7 +48,7 @@ def div(value, arg):
             return 0
 
 @register.filter
-def float(value):
+def float_format(value):
     """Convert value to float."""
     try:
         return float(value)
