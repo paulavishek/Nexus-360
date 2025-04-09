@@ -53,6 +53,15 @@ def chat(request):
         chatbot = ChatbotService()
         response = chatbot.get_response(message, sheet_name, history)
         
+        # Check if it's a dashboard response
+        if response.get('source') == 'dashboard':
+            return JsonResponse({
+                'response': response['response'],
+                'source': response['source'],
+                'sheet_name': response['sheet_name'],
+                'dashboard_url': response['dashboard_url']
+            })
+        
         return JsonResponse({
             'response': response['response'],
             'source': response['source'],
