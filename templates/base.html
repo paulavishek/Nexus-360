@@ -11,291 +11,175 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Enhanced Base Styles */
-        :root {
-            --primary-color: #4a6fa5;
-            --secondary-color: #166088;
-            --accent-color: #4fc3a1;
-            --light-bg: #f8f9fa;
-            --dark-text: #343a40;
-            --border-radius-sm: 8px;
-            --border-radius-md: 12px;
-            --border-radius-lg: 18px;
-            --shadow-soft: 0 5px 15px rgba(0,0,0,0.05);
-            --shadow-medium: 0 8px 20px rgba(0,0,0,0.1);
-            --transition-smooth: all 0.3s ease;
-        }
+        /* CSS Variables for Theme Support */
+:root {
+    /* Light Theme (default) */
+    --primary-color: #4a6fa5;
+    --secondary-color: #166088;
+    --accent-color: #4fc3a1;
+    --light-bg: #f8f9fa;
+    --dark-text: #343a40;
+    --body-bg: #f8f9fa;
+    --card-bg: #ffffff;
+    --border-color: rgba(0,0,0,0.125);
+    --message-bubble-user: #4a6fa5;
+    --message-bubble-bot: #f1f3f5;
+    --message-text-user: #ffffff;
+    --message-text-bot: #343a40;
+    --chat-bg: #ffffff;
+    --input-bg: #ffffff;
+    --nav-bg: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    --footer-bg: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+    --shadow-color: rgba(0,0,0,0.1);
+    --muted-text: #6c757d;
+}
 
-        body {
-            font-family: 'Inter', 'Segoe UI', sans-serif;
-            background-color: var(--light-bg);
-            color: var(--dark-text);
-            line-height: 1.6;
-        }
+/* Dark Theme */
+[data-theme="dark"] {
+    --primary-color: #5b84c7;
+    --secondary-color: #1a7baf;
+    --accent-color: #56d7b2;
+    --light-bg: #212529;
+    --dark-text: #f1f3f5;
+    --body-bg: #121212;
+    --card-bg: #1e1e1e;
+    --border-color: rgba(255,255,255,0.1);
+    --message-bubble-user: #5b84c7;
+    --message-bubble-bot: #2a2a2a;
+    --message-text-user: #ffffff;
+    --message-text-bot: #e9ecef;
+    --chat-bg: #1e1e1e;
+    --input-bg: #2a2a2a;
+    --nav-bg: #1a1a1a;
+    --footer-bg: #1a1a1a;
+    --shadow-color: rgba(0,0,0,0.3);
+    --muted-text: #adb5bd;
+}
 
-        /* Navbar Improvements */
-        .navbar {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 0.8rem 1rem;
-        }
+/* Apply Variables to Base Elements */
+body {
+    background-color: var(--body-bg);
+    color: var(--dark-text);
+}
 
-        .navbar-brand, .nav-link {
-            color: white !important;
-            font-weight: 500;
-            transition: var(--transition-smooth);
-        }
+.navbar {
+    background: var(--nav-bg);
+}
 
-        .navbar-brand {
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
+.footer {
+    background: var(--footer-bg);
+}
 
-        .nav-link:hover {
-            color: var(--accent-color) !important;
-            transform: translateY(-2px);
-        }
+.card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    box-shadow: 0 4px 8px var(--shadow-color);
+}
 
-        .navbar .dropdown-menu {
-            border: none;
-            border-radius: var(--border-radius-sm);
-            box-shadow: var(--shadow-medium);
-            margin-top: 10px;
-        }
+.card-header {
+    background: linear-gradient(to right, var(--secondary-color), var(--primary-color));
+}
 
-        .navbar .dropdown-item {
-            padding: 0.6rem 1.2rem;
-            transition: var(--transition-smooth);
-        }
+.form-control {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--dark-text);
+}
 
-        .navbar .dropdown-item:hover {
-            background-color: rgba(74, 111, 165, 0.1);
-        }
+.form-control:focus {
+    background-color: var(--input-bg);
+    color: var(--dark-text);
+}
 
-        /* Footer Improvements */
-        .footer {
-            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
-            color: white;
-            padding: 1.5rem 0;
-            margin-top: 4rem;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-        }
+.form-select {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--dark-text);
+}
 
-        .main-content {
-            min-height: calc(100vh - 180px);
-            padding: 2.5rem 0;
-        }
+.text-muted {
+    color: var(--muted-text) !important;
+}
 
-        /* Card Improvements */
-        .card {
-            border: none;
-            border-radius: var(--border-radius-md);
-            box-shadow: var(--shadow-soft);
-            transition: transform 0.3s, box-shadow 0.3s;
-            margin-bottom: 1.5rem;
-            overflow: hidden;
-        }
+/* Table Styling for Dark Mode */
+.table {
+    color: var(--dark-text);
+}
 
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-medium);
-        }
+.table-hover tbody tr:hover {
+    background-color: rgba(91, 132, 199, 0.1);
+}
 
-        .card-header {
-            background: linear-gradient(to right, var(--secondary-color), var(--primary-color));
-            color: white;
-            border-radius: var(--border-radius-md) var(--border-radius-md) 0 0 !important;
-            padding: 0.8rem 1.25rem;
-            font-weight: 600;
-            border: none;
-        }
+/* Modal and Dropdown Styling */
+.modal-content {
+    background-color: var(--card-bg);
+    color: var(--dark-text);
+}
 
-        /* Button Improvements */
-        .btn {
-            border-radius: var(--border-radius-sm);
-            padding: 0.5rem 1.2rem;
-            font-weight: 500;
-            transition: var(--transition-smooth);
-        }
+.dropdown-menu {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
 
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+.dropdown-item {
+    color: var(--dark-text);
+}
 
-        .btn-primary {
-            background: linear-gradient(to right, var(--secondary-color), var(--primary-color));
-            border-color: var(--secondary-color);
-        }
+.dropdown-item:hover {
+    background-color: rgba(91, 132, 199, 0.1);
+    color: var(--dark-text);
+}
 
-        .btn-primary:hover, .btn-primary:focus, .btn-primary:active {
-            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
-            border-color: var(--primary-color);
-        }
+/* Chat-specific Styling */
+.chat-container {
+    background-color: var(--chat-bg);
+}
 
-        .btn-accent {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
-            color: white;
-        }
+.user-message {
+    background-color: var(--message-bubble-user);
+    color: var(--message-text-user);
+}
 
-        .btn-accent:hover, .btn-accent:focus, .btn-accent:active {
-            background-color: #3aa889;
-            border-color: #3aa889;
-            color: white;
-        }
+.bot-message {
+    background-color: var(--message-bubble-bot);
+    color: var(--message-text-bot);
+}
 
-        .btn-secondary {
-            background-color: #6c757d;
-            border-color: #6c757d;
-        }
+.input-area {
+    background-color: var(--card-bg);
+}
 
-        .btn-outline-primary {
-            color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
+#user-input {
+    background-color: var(--input-bg);
+    color: var(--dark-text);
+}
 
-        .btn-outline-primary:hover {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
+/* Theme Toggle Button Styling */
+.theme-toggle {
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
 
-        /* Form Controls */
-        .form-control {
-            border-radius: var(--border-radius-sm);
-            padding: 0.6rem 1rem;
-            border: 1px solid rgba(0,0,0,0.1);
-            transition: var(--transition-smooth);
-        }
+.theme-toggle:hover {
+    background-color: rgba(255,255,255,0.1);
+}
 
-        .form-control:focus {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 0.2rem rgba(79, 195, 161, 0.25);
-        }
-
-        .form-select {
-            border-radius: var(--border-radius-sm);
-            padding: 0.6rem 1rem;
-            border: 1px solid rgba(0,0,0,0.1);
-            transition: var(--transition-smooth);
-        }
-
-        .form-select:focus {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 0.2rem rgba(79, 195, 161, 0.25);
-        }
-
-        /* Badge Improvements */
-        .badge {
-            padding: 0.4em 0.8em;
-            font-weight: 500;
-            border-radius: 30px;
-        }
-
-        /* Table Improvements */
-        .table {
-            border-radius: var(--border-radius-sm);
-            overflow: hidden;
-        }
-
-        .table-hover tbody tr:hover {
-            background-color: rgba(74, 111, 165, 0.05);
-        }
-
-        /* Progress Bar */
-        .progress {
-            height: 10px;
-            border-radius: 30px;
-            overflow: hidden;
-            background-color: rgba(0,0,0,0.05);
-        }
-
-        .progress-bar {
-            background-color: var(--accent-color);
-        }
-
-        /* Headers & Typography */
-        h1, h2, h3, h4, h5, h6 {
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
-
-        h1 {
-        color: var(--primary-color);
-        }
-
-        /* Link Styling */
-        a {
-            color: var(--secondary-color);
-            text-decoration: none;
-            transition: var(--transition-smooth);
-        }
-
-        a:hover {
-            color: var(--primary-color);
-            text-decoration: underline;
-        }
-
-        /* Alert Styling */
-        .alert {
-            border: none;
-            border-radius: var(--border-radius-sm);
-            box-shadow: var(--shadow-soft);
-        }
-
-        /* Pagination */
-        .pagination .page-link {
-            border: none;
-            color: var(--secondary-color);
-            padding: 0.5rem 0.8rem;
-            border-radius: var(--border-radius-sm);
-            margin: 0 3px;
-            transition: var(--transition-smooth);
-        }
-
-        .pagination .page-link:hover {
-            background-color: rgba(74, 111, 165, 0.1);
-            color: var(--secondary-color);
-            transform: translateY(-2px);
-        }
-
-        .pagination .page-item.active .page-link {
-            background-color: var(--secondary-color);
-            color: white;
-        }
-
-        /* Animation Utilities */
-        .animate-fade-in {
-            animation: fadeIn 0.6s ease;
-        }
-
-        .animate-slide-up {
-            animation: slideUp 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        /* Responsive Adjustments */
-        @media (max-width: 768px) {
-            .main-content {
-                padding: 1.5rem 0;
-            }
-            
-            h1 {
-                font-size: 1.8rem;
-            }
-            
-            .card-header {
-                padding: 0.6rem 1rem;
-            }
-        }
+/* Smooth Transition for Theme Changes */
+body, .card, .navbar, .footer, .form-control, .btn, 
+.chat-container, .message, .input-area, #user-input {
+    transition: background-color 0.3s ease, 
+                color 0.3s ease, 
+                border-color 0.3s ease, 
+                box-shadow 0.3s ease;
+}
+        
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -350,6 +234,11 @@
                         <a class="nav-link" href="{% url 'chatbot:login' %}"><i class="fas fa-sign-in-alt me-1"></i>Login</a>
                     </li>
                     {% endif %}
+                    <li class="nav-item ms-2">
+                        <div class="theme-toggle" id="theme-toggle" title="Toggle dark/light mode">
+                            <i class="fas fa-moon"></i>
+                        </div>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -366,10 +255,42 @@
             <div class="row">
                 <div class="col-12">
                     <p class="mb-0">&copy; {% now "Y" %} Project Management Chatbot | Powered by OpenAI</p>
-                </div>
-            </div>
-        </div>
-    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Theme toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = themeToggle.querySelector('i');
+            
+            // Check for saved theme
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            
+            // Update icon based on current theme
+            if (currentTheme === 'dark') {
+                themeIcon.classList.replace('fa-moon', 'fa-sun');
+            }
+            
+            // Toggle theme when button is clicked
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                
+                // Switch icon
+                if (newTheme === 'dark') {
+                    themeIcon.classList.replace('fa-moon', 'fa-sun');
+                } else {
+                    themeIcon.classList.replace('fa-sun', 'fa-moon');
+                }
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
