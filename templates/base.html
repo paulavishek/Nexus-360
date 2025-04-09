@@ -59,55 +59,160 @@
             --footer-bg: #1a1a1a;
             --shadow-color: rgba(0, 0, 0, 0.3);
             --muted-text: #adb5bd;
+            --table-row-hover: rgba(255, 255, 255, 0.05);
+            --card-header-bg: linear-gradient(to right, #1a7baf, #5b84c7);
         }
     
-        /* Improve dark mode text input visibility */
+        /* Improve form elements in dark mode */
         [data-theme="dark"] .form-control,
-        [data-theme="dark"] .form-select {
+        [data-theme="dark"] .form-select,
+        [data-theme="dark"] input.form-control,
+        [data-theme="dark"] textarea.form-control,
+        [data-theme="dark"] select.form-select {
             color: #e9ecef;
-            /* Light text color for dark mode */
             background-color: #2a2a2a;
-            /* Dark but not too dark background */
             border-color: rgba(255, 255, 255, 0.2);
-            /* Slightly visible border */
         }
     
         [data-theme="dark"] .form-control:focus,
         [data-theme="dark"] .form-select:focus {
             color: #fff;
-            /* Even brighter text on focus */
             background-color: #333;
-            /* Slightly lighter background on focus */
             border-color: var(--accent-color);
-            /* Use accent color for border */
             box-shadow: 0 0 0 0.2rem rgba(79, 195, 161, 0.25);
-            /* Same as light mode */
         }
     
-        /* Fix placeholder color in dark mode to be more visible */
-        [data-theme="dark"] .form-control::placeholder {
+        /* Improve search input in projects page */
+        [data-theme="dark"] input[type="search"],
+        [data-theme="dark"] input[name="search"] {
+            color: #e9ecef;
+            background-color: #2a2a2a;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+    
+        /* Fix placeholder color in dark mode */
+        [data-theme="dark"] .form-control::placeholder,
+        [data-theme="dark"] input::placeholder {
             color: #adb5bd;
-            /* Lighter placeholder text */
             opacity: 0.8;
         }
     
-        /* Ensure the chat input area has proper contrast in dark mode */
+        /* Ensure the chat input has proper contrast */
         [data-theme="dark"] #user-input {
             color: #e9ecef;
             background-color: #2a2a2a;
             border-color: rgba(255, 255, 255, 0.2);
             caret-color: var(--accent-color);
-            /* Colorful cursor for better visibility */
         }
     
-        /* Also ensure the send button is properly themed */
-        [data-theme="dark"] .send-btn {
-            background-color: var(--primary-color);
+        /* Table styles for dark mode */
+        [data-theme="dark"] .table {
+            color: #e9ecef;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+    
+        [data-theme="dark"] .table th {
+            color: #fff;
+            background-color: rgba(30, 30, 30, 0.8);
+        }
+    
+        [data-theme="dark"] .table-hover tbody tr:hover {
+            background-color: var(--table-row-hover);
+        }
+    
+        /* Card styles for dark mode */
+        [data-theme="dark"] .card {
+            background-color: var(--card-bg);
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+    
+        [data-theme="dark"] .card-header {
+            background: var(--card-header-bg);
             color: white;
+        }
+    
+        [data-theme="dark"] .card-body {
+            color: var(--dark-text);
+        }
+    
+        [data-theme="dark"] .card-footer {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+    
+        /* Fix project cards in dark mode */
+        [data-theme="dark"] .dashboard-card,
+        [data-theme="dark"] .budget-card,
+        [data-theme="dark"] .metric-card {
+            background-color: var(--card-bg);
+            color: var(--dark-text);
+        }
+    
+        [data-theme="dark"] .metric-value {
+            color: white;
+        }
+    
+        [data-theme="dark"] .metric-label {
+            color: var(--muted-text);
+        }
+    
+        /* Chart improvements for dark mode */
+        [data-theme="dark"] .chart-container {
+            background-color: var(--card-bg);
+        }
+    
+        [data-theme="dark"] .chart-loading {
+            background-color: rgba(18, 18, 18, 0.7);
+        }
+    
+        /* Fix text colors in dark mode */
+        [data-theme="dark"] h1,
+        [data-theme="dark"] h2,
+        [data-theme="dark"] h3,
+        [data-theme="dark"] h4,
+        [data-theme="dark"] h5,
+        [data-theme="dark"] h6 {
+            color: #fff;
+        }
+    
+        [data-theme="dark"] .text-muted {
+            color: #adb5bd !important;
+        }
+    
+        /* Table row fixes for project lists */
+        [data-theme="dark"] .project-row,
+        [data-theme="dark"] .team-member,
+        [data-theme="dark"] .project-budget-row {
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+    
+        [data-theme="dark"] .project-row:hover,
+        [data-theme="dark"] .team-member:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+    
+        /* Button color fixes for dark mode */
+        [data-theme="dark"] .btn-outline-primary {
+            color: var(--primary-color);
             border-color: var(--primary-color);
         }
     
-        /* Fix for any dropdown menus in dark mode */
+        [data-theme="dark"] .btn-outline-primary:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+    
+        [data-theme="dark"] .btn-outline-secondary {
+            color: #adb5bd;
+            border-color: #495057;
+        }
+    
+        [data-theme="dark"] .btn-outline-secondary:hover {
+            background-color: #495057;
+            color: white;
+        }
+    
+        /* Dropdown menu in dark mode */
         [data-theme="dark"] .dropdown-menu {
             background-color: #2a2a2a;
             border-color: rgba(255, 255, 255, 0.1);
@@ -119,6 +224,87 @@
     
         [data-theme="dark"] .dropdown-item:hover {
             background-color: #3a3a3a;
+        }
+    
+        [data-theme="dark"] .dropdown-divider {
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+    
+        /* Progress bar color adjustment */
+        [data-theme="dark"] .progress {
+            background-color: #2a2a2a;
+        }
+    
+        /* Alert styling for dark mode */
+        [data-theme="dark"] .alert-info {
+            background-color: rgba(23, 162, 184, 0.2);
+            color: #adb5bd;
+            border-color: rgba(23, 162, 184, 0.3);
+        }
+    
+        /* Fix pagination in dark mode */
+        [data-theme="dark"] .page-link {
+            background-color: #2a2a2a;
+            border-color: #444;
+            color: #e9ecef;
+        }
+    
+        [data-theme="dark"] .page-item.active .page-link {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+    
+        [data-theme="dark"] .page-item.disabled .page-link {
+            background-color: #222;
+            border-color: #444;
+            color: #666;
+        }
+    
+        /* Fix badge colors in dark mode */
+        [data-theme="dark"] .badge.bg-secondary {
+            background-color: #4d5154 !important;
+        }
+    
+        /* Fix modal dialogs in dark mode if you have any */
+        [data-theme="dark"] .modal-content {
+            background-color: var(--card-bg);
+            color: var(--dark-text);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+    
+        [data-theme="dark"] .modal-header {
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+    
+        [data-theme="dark"] .modal-footer {
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+    
+        /* Fix any custom card colors - based on the images */
+        [data-theme="dark"] .bg-primary.bg-opacity-10 {
+            background-color: rgba(91, 132, 199, 0.2) !important;
+        }
+    
+        [data-theme="dark"] .bg-success.bg-opacity-10 {
+            background-color: rgba(40, 167, 69, 0.2) !important;
+        }
+    
+        [data-theme="dark"] .bg-danger.bg-opacity-10 {
+            background-color: rgba(220, 53, 69, 0.2) !important;
+        }
+    
+        [data-theme="dark"] .bg-warning.bg-opacity-10 {
+            background-color: rgba(255, 193, 7, 0.2) !important;
+        }
+    
+        /* Fix links in dark mode */
+        [data-theme="dark"] a:not(.btn):not(.nav-link):not(.page-link) {
+            color: #8bb9fe;
+        }
+    
+        [data-theme="dark"] a:not(.btn):not(.nav-link):not(.page-link):hover {
+            color: #afd1ff;
         }
     
         /* Base Styles */
