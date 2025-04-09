@@ -48,9 +48,9 @@ def div(value, arg):
             return 0
 
 @register.filter
-def float_format(value):
+def float(value):
     """Convert value to float."""
     try:
-        return float(value)
+        return __builtins__['float'](value)
     except (ValueError, TypeError):
         return 0
