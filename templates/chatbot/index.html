@@ -648,7 +648,23 @@
             const messageContent = messageEl.find('div:nth-child(2)').html().trim(); // Use HTML to preserve formatting
             const timestamp = messageEl.find('.message-timestamp').text();
             const isUser = messageEl.hasClass('user-message');
-            const starredMessages = JSON.parse(localStorage.getItem('pmChatbot_starredMessages')) || [];
+            
+            // Get current starred messages with extra safety
+            let starredMessages = [];
+            try {
+                const stored = localStorage.getItem('pmChatbot_starredMessages');
+                if (stored) {
+                    starredMessages = JSON.parse(stored);
+                    // Validate it's an array
+                    if (!Array.isArray(starredMessages)) {
+                        console.error("Stored starred messages is not an array:", starredMessages);
+                        starredMessages = [];
+                    }
+                }
+            } catch (e) {
+                console.error("Error parsing starred messages:", e);
+                localStorage.removeItem('pmChatbot_starredMessages');
+            }
             
             // Only allow starring bot messages (since we'll include the preceding user message)
             if (isUser) {
@@ -668,28 +684,35 @@
                     };
                 }
             }
-
-            if (messageEl.hasClass('starred')) {
+            
+            // Check if message is already starred
+            const messageIndex = starredMessages.findIndex(msg =>
+                msg.content === messageContent && msg.timestamp === timestamp);
+            
+            if (messageIndex !== -1) {
+                // Already starred - remove it
                 messageEl.removeClass('starred');
                 $(this).html('<i class="fas fa-star-half-alt"></i>');
-
-                // Remove from localStorage
-                const updatedMessages = starredMessages.filter(msg => 
-                    msg.content !== messageContent || msg.timestamp !== timestamp);
-                localStorage.setItem('pmChatbot_starredMessages', JSON.stringify(updatedMessages));
+                
+                // Remove from array and update localStorage
+                starredMessages.splice(messageIndex, 1);
             } else {
+                // Not starred - add it
                 messageEl.addClass('starred');
                 $(this).html('<i class="fas fa-star"></i>');
-
-                // Add to localStorage with isUser property and preceding user message
-                starredMessages.push({ 
-                    content: messageContent, 
+                
+                // Add to localStorage with userQuestion
+                starredMessages.push({
+                    content: messageContent,
                     timestamp: timestamp,
                     isUser: isUser,
                     userQuestion: precedingUserMessage
                 });
-                localStorage.setItem('pmChatbot_starredMessages', JSON.stringify(starredMessages));
             }
+            
+            // Save the updated array
+            localStorage.setItem('pmChatbot_starredMessages', JSON.stringify(starredMessages));
+            console.log("Updated localStorage:", localStorage.getItem('pmChatbot_starredMessages'));
         });
 
         // Handle message actions - Copy button
@@ -887,79 +910,6 @@
                 }
             });
         }
-
-        // Replace the star button click handler
-        $(document).on('click', '.star-btn', function () {
-            const messageEl = $(this).closest('.message');
-            const messageContent = messageEl.find('div:nth-child(2)').html().trim(); // Use HTML to preserve formatting
-            const timestamp = messageEl.find('.message-timestamp').text();
-            const isUser = messageEl.hasClass('user-message');
-
-            // Get current starred messages with extra safety
-            let starredMessages = [];
-            try {
-                const stored = localStorage.getItem('pmChatbot_starredMessages');
-                if (stored) {
-                    starredMessages = JSON.parse(stored);
-                    // Validate it's an array
-                    if (!Array.isArray(starredMessages)) {
-                        console.error("Stored starred messages is not an array:", starredMessages);
-                        starredMessages = [];
-                    }
-                }
-            } catch (e) {
-                console.error("Error parsing starred messages:", e);
-                localStorage.removeItem('pmChatbot_starredMessages');
-            }
-
-            // Only allow starring bot messages (since we'll include the preceding user message)
-            if (isUser) {
-                alert("You can only star assistant responses. The associated question will be included automatically.");
-                return;
-            }
-
-            // Find the preceding user message if this is a bot message
-            let precedingUserMessage = null;
-            if (!isUser) {
-                // Get the previous message element
-                const prevMessageEl = messageEl.prev('.message.user-message');
-                if (prevMessageEl.length > 0) {
-                    precedingUserMessage = {
-                        content: prevMessageEl.find('div:nth-child(2)').html().trim(),
-                        timestamp: prevMessageEl.find('.message-timestamp').text()
-                    };
-                }
-            }
-
-            // Check if message is already starred
-            const messageIndex = starredMessages.findIndex(msg =>
-                msg.content === messageContent && msg.timestamp === timestamp);
-
-            if (messageIndex !== -1) {
-                // Already starred - remove it
-                messageEl.removeClass('starred');
-                $(this).html('<i class="fas fa-star-half-alt"></i>');
-
-                // Remove from array and update localStorage
-                starredMessages.splice(messageIndex, 1);
-            } else {
-                // Not starred - add it
-                messageEl.addClass('starred');
-                $(this).html('<i class="fas fa-star"></i>');
-
-                // Add to localStorage with userQuestion
-                starredMessages.push({
-                    content: messageContent,
-                    timestamp: timestamp,
-                    isUser: isUser,
-                    userQuestion: precedingUserMessage
-                });
-            }
-
-            // Save the updated array
-            localStorage.setItem('pmChatbot_starredMessages', JSON.stringify(starredMessages));
-            console.log("Updated localStorage:", localStorage.getItem('pmChatbot_starredMessages'));
-        });
 
         // Add debug logging when the page loads
         $(document).ready(function () {
