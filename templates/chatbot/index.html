@@ -309,7 +309,7 @@
         
         <p class="text-center text-muted small mt-3">
             <i class="fas fa-info-circle me-1"></i> 
-            This chatbot uses OpenAI GPT-4o-mini with Google Gemini as a fallback
+            This chatbot uses OpenAI GPT-4o-mini
         </p>
     </div>
 </div>
@@ -376,8 +376,6 @@
                 if (source) {
                     if (source === 'openai') {
                         sourceInfo += '<i class="fas fa-robot me-1"></i> OpenAI GPT-4o-mini';
-                    } else if (source === 'gemini') {
-                        sourceInfo += '<i class="fas fa-robot me-1"></i> Google Gemini';
                     } else {
                         sourceInfo += source;
                     }
@@ -490,18 +488,18 @@
             }
         });
 
-        // Sheet selector change handler - optionally add a message about changing context
-        sheetSelector.on('change', function () {
-            const selectedSheet = $(this).val();
-            const message = selectedSheet
-                ? `Now focusing on the "${selectedSheet}" project sheet.`
-                : "Now considering all project sheets.";
-
-            addMessage(message, 'bot', 'System');
+            // Sheet selector change handler - optionally add a message about changing context
+            sheetSelector.on('change', function () {
+                const selectedSheet = $(this).val();
+                const message = selectedSheet
+                    ? `Now focusing on the "${selectedSheet}" project sheet.`
+                    : "Now considering all project sheets.";
+    
+                addMessage(message, 'bot', 'System');
+            });
+    
+            // Focus input on page load
+            userInput.focus();
         });
-
-        // Focus input on page load
-        userInput.focus();
-    });
-</script>
-{% endblock %}
+    </script>
+    {% endblock %}
