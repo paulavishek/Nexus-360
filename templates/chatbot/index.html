@@ -293,6 +293,13 @@
                 <div class="form-text text-center">Select a specific sheet or query across all sheets</div>
             </div>
             {% endif %}
+            
+            <!-- Add View Starred button -->
+            <div class="text-end mt-3">
+                <button id="view-starred" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-star me-1"></i>View Starred
+                </button>
+            </div>
         </div>
         
         <div class="chat-container-wrapper">
@@ -358,6 +365,7 @@
         const typingIndicator = $('#typing-indicator');
         const sheetSelector = $('#sheet-selector');
         const exportBtn = $('#export-chat');
+        const viewStarredBtn = $('#view-starred');
         let chatHistory = [];
 
         // Function to get CSRF token from cookies
@@ -560,12 +568,24 @@
         // Handle message actions
         $(document).on('click', '.star-btn', function() {
             const messageEl = $(this).closest('.message');
+            const messageContent = messageEl.find('div:nth-child(2)').text().trim();
+            const timestamp = messageEl.find('.message-timestamp').text();
+            const starredMessages = JSON.parse(localStorage.getItem('starredMessages')) || [];
+
             if (messageEl.hasClass('starred')) {
                 messageEl.removeClass('starred');
                 $(this).html('<i class="far fa-star"></i>');
+
+                // Remove from localStorage
+                const updatedMessages = starredMessages.filter(msg => msg.content !== messageContent || msg.timestamp !== timestamp);
+                localStorage.setItem('starredMessages', JSON.stringify(updatedMessages));
             } else {
                 messageEl.addClass('starred');
                 $(this).html('<i class="fas fa-star"></i>');
+
+                // Add to localStorage
+                starredMessages.push({ content: messageContent, timestamp: timestamp });
+                localStorage.setItem('starredMessages', JSON.stringify(starredMessages));
             }
         });
 
@@ -610,6 +630,35 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+        });
+
+        // View starred messages functionality
+        viewStarredBtn.on('click', function() {
+            const starredMessages = JSON.parse(localStorage.getItem('starredMessages')) || [];
+            let modalContent = '<div class="modal fade" id="starredMessagesModal" tabindex="-1" aria-labelledby="starredMessagesModalLabel" aria-hidden="true">';
+            modalContent += '<div class="modal-dialog"><div class="modal-content"><div class="modal-header">';
+            modalContent += '<h5 class="modal-title" id="starredMessagesModalLabel">Starred Messages</h5>';
+            modalContent += '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>';
+            modalContent += '<div class="modal-body">';
+
+            if (starredMessages.length > 0) {
+                starredMessages.forEach(msg => {
+                    modalContent += `<p><strong>[${msg.timestamp}]</strong> ${msg.content}</p>`;
+                });
+            } else {
+                modalContent += '<p>No starred messages found.</p>';
+            }
+
+            modalContent += '</div><div class="modal-footer">';
+            modalContent += '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>';
+            modalContent += '</div></div></div></div>';
+
+            $('body').append(modalContent);
+            $('#starredMessagesModal').modal('show');
+
+            $('#starredMessagesModal').on('hidden.bs.modal', function () {
+                $(this).remove();
+            });
         });
         
         // Focus input on page load
