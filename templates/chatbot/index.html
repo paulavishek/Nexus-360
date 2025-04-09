@@ -18,6 +18,7 @@
     --message-text-bot: #343a40;
     --chat-bg: #ffffff;
     --border-radius-lg: 18px;
+    --border-radius-md: 12px;
     --border-radius-sm: 8px;
     --shadow-soft: 0 5px 15px rgba(0,0,0,0.05);
     --shadow-medium: 0 8px 20px rgba(0,0,0,0.1);
@@ -272,6 +273,76 @@
     color: var(--primary-color);
     font-weight: 700;
 }
+
+/* New styles for the starred conversations modal */
+.starred-conversation {
+    background-color: var(--chat-bg);
+    border-radius: var(--border-radius-md);
+    transition: var(--transition-smooth);
+    border: 1px solid #ddd;
+    margin-bottom: 20px;
+}
+
+.starred-conversation:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-medium) !important;
+}
+
+.user-question {
+    border-left: 3px solid var(--primary-color);
+    background-color: rgba(74, 111, 165, 0.1);
+    margin-bottom: 10px;
+    padding: 12px;
+    border-radius: var(--border-radius-sm);
+}
+
+.assistant-response {
+    border-left: 3px solid var(--accent-color);
+    background-color: #f8f9fa;
+    padding: 12px;
+    border-radius: var(--border-radius-sm);
+}
+
+/* Fix icon visibility issues */
+.message-action-btn i {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    text-align: center;
+}
+
+/* Make star message icon look better */
+.star-btn i {
+    color: #ffc107;
+}
+
+/* Modal improvements */
+#starredMessagesModal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* Fix the arrow button */
+.input-group .send-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.input-group .send-btn i {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    #starredMessagesModal .modal-body {
+        max-height: 60vh;
+    }
+}
 </style>
 {% endblock %}
 
@@ -283,7 +354,7 @@
             <p class="text-muted">Ask me anything about your projects, team members, or budget information!</p>
             
             {% if sheet_names|length > 1 %}
-            <div class="sheet-selector">
+            <div class="sheet-selector mb-3">
                 <select class="form-select" id="sheet-selector">
                     <option value="">All Project Sheets</option>
                     {% for name in sheet_names %}
@@ -326,8 +397,8 @@
                         <button class="message-action-btn copy-btn" title="Copy to clipboard">
                             <i class="fas fa-copy"></i>
                         </button>
-                        <button class="message-action-btn star-btn" title="Star this message">
-                            <i class="far fa-star"></i>
+                        <button class="message-action-btn star-btn" title="Star this conversation">
+                            <i class="fas fa-star-half-alt"></i>
                         </button>
                     </div>
                 </div>
@@ -342,7 +413,7 @@
         <div class="input-area">
             <div class="input-group">
                 <input type="text" class="form-control" id="user-input" placeholder="Type your message here..." aria-label="User message">
-                <button class="btn send-btn" type="button" id="send-btn">
+                <button class="btn btn-primary send-btn" type="button" id="send-btn">
                     <i class="fas fa-paper-plane"></i>
                 </button>
             </div>
@@ -459,8 +530,8 @@
                         <button class="message-action-btn copy-btn" title="Copy to clipboard">
                             <i class="fas fa-copy"></i>
                         </button>
-                        <button class="message-action-btn star-btn" title="Star this message">
-                            <i class="far fa-star"></i>
+                        <button class="message-action-btn star-btn" title="Star this conversation">
+                            <i class="fas fa-star-half-alt"></i>
                         </button>
                     </div>
                 `;
@@ -565,36 +636,57 @@
             addMessage(message, 'bot', 'System');
         });
 
-        // Handle message actions
+        // Handle message actions - Star button
         $(document).on('click', '.star-btn', function() {
-    const messageEl = $(this).closest('.message');
-    const messageContent = messageEl.find('div:nth-child(2)').html().trim(); // Use HTML to preserve formatting
-    const timestamp = messageEl.find('.message-timestamp').text();
-    const isUser = messageEl.hasClass('user-message');
-    const starredMessages = JSON.parse(localStorage.getItem('pmChatbot_starredMessages')) || [];
+            const messageEl = $(this).closest('.message');
+            const messageContent = messageEl.find('div:nth-child(2)').html().trim(); // Use HTML to preserve formatting
+            const timestamp = messageEl.find('.message-timestamp').text();
+            const isUser = messageEl.hasClass('user-message');
+            const starredMessages = JSON.parse(localStorage.getItem('pmChatbot_starredMessages')) || [];
+            
+            // Only allow starring bot messages (since we'll include the preceding user message)
+            if (isUser) {
+                alert("You can only star assistant responses. The associated question will be included automatically.");
+                return;
+            }
+            
+            // Find the preceding user message if this is a bot message
+            let precedingUserMessage = null;
+            if (!isUser) {
+                // Get the previous message element
+                const prevMessageEl = messageEl.prev('.message.user-message');
+                if (prevMessageEl.length > 0) {
+                    precedingUserMessage = {
+                        content: prevMessageEl.find('div:nth-child(2)').html().trim(),
+                        timestamp: prevMessageEl.find('.message-timestamp').text()
+                    };
+                }
+            }
 
-    if (messageEl.hasClass('starred')) {
-        messageEl.removeClass('starred');
-        $(this).html('<i class="far fa-star"></i>');
+            if (messageEl.hasClass('starred')) {
+                messageEl.removeClass('starred');
+                $(this).html('<i class="fas fa-star-half-alt"></i>');
 
-        // Remove from localStorage
-        const updatedMessages = starredMessages.filter(msg => 
-            msg.content !== messageContent || msg.timestamp !== timestamp);
-        localStorage.setItem('pmChatbot_starredMessages', JSON.stringify(updatedMessages));
-    } else {
-        messageEl.addClass('starred');
-        $(this).html('<i class="fas fa-star"></i>');
+                // Remove from localStorage
+                const updatedMessages = starredMessages.filter(msg => 
+                    msg.content !== messageContent || msg.timestamp !== timestamp);
+                localStorage.setItem('pmChatbot_starredMessages', JSON.stringify(updatedMessages));
+            } else {
+                messageEl.addClass('starred');
+                $(this).html('<i class="fas fa-star"></i>');
 
-        // Add to localStorage with isUser property
-        starredMessages.push({ 
-            content: messageContent, 
-            timestamp: timestamp,
-            isUser: isUser
+                // Add to localStorage with isUser property and preceding user message
+                starredMessages.push({ 
+                    content: messageContent, 
+                    timestamp: timestamp,
+                    isUser: isUser,
+                    userQuestion: precedingUserMessage
+                });
+                localStorage.setItem('pmChatbot_starredMessages', JSON.stringify(starredMessages));
+            }
         });
-        localStorage.setItem('pmChatbot_starredMessages', JSON.stringify(starredMessages));
-    }
-});
 
+        // Handle message actions - Copy button
         $(document).on('click', '.copy-btn', function() {
             const messageEl = $(this).closest('.message');
             const textToCopy = messageEl.find('div:nth-child(2)').text().trim();
@@ -640,65 +732,98 @@
 
         // View starred messages functionality
         viewStarredBtn.on('click', function() {
-    const starredMessages = JSON.parse(localStorage.getItem('pmChatbot_starredMessages') || '[]');
-    
-    const modalHTML = `
-    <div class="modal fade" id="starredMessagesModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-star me-2"></i>Starred Conversations</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="starred-messages-container">
-                        ${starredMessages.length === 0 ? 
-                          '<p class="text-center py-4">No starred conversations found.</p>' : 
-                          starredMessages.map(message => `
-                            <div class="starred-conversation p-3 mb-4 rounded shadow-sm border">
-                                <div class="${message.isUser ? 'user-question' : 'assistant-response'} p-3 rounded ${message.isUser ? 'bg-primary bg-opacity-10' : 'bg-light'}">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="fw-bold">${message.isUser ? 'You' : 'Assistant'}</span>
-                                        <small class="text-muted">${message.timestamp}</small>
+            const starredMessages = JSON.parse(localStorage.getItem('pmChatbot_starredMessages')) || [];
+            
+            const modalHTML = `
+            <div class="modal fade" id="starredMessagesModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="fas fa-star me-2"></i>Starred Conversations</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="starred-messages-container">
+                                ${starredMessages.length === 0 ? 
+                                  '<p class="text-center py-4">No starred conversations found.</p>' : 
+                                  starredMessages.map(message => `
+                                    <div class="starred-conversation p-3 mb-4 rounded shadow-sm">
+                                        ${message.userQuestion ? `
+                                        <div class="user-question p-3 rounded">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="fw-bold">You</span>
+                                                <small class="text-muted">${message.userQuestion.timestamp}</small>
+                                            </div>
+                                            <div class="message-content">${message.userQuestion.content}</div>
+                                        </div>` : ''}
+                                        
+                                        <div class="assistant-response p-3 rounded mt-2">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="fw-bold">Assistant</span>
+                                                <small class="text-muted">${message.timestamp}</small>
+                                            </div>
+                                            <div class="message-content">${message.content}</div>
+                                        </div>
                                     </div>
-                                    <div class="message-content">${message.content}</div>
-                                </div>
+                                `).join('')}
                             </div>
-                        `).join('')}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-danger" id="clear-starred">Clear All Starred</button>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-danger" id="clear-starred">Clear All Starred</button>
-                </div>
             </div>
-        </div>
-    </div>
-    `;
+            `;
 
-    $('body').append(modalHTML);
-    const modal = new bootstrap.Modal(document.getElementById('starredMessagesModal'));
-    modal.show();
+            $('body').append(modalHTML);
+            const modal = new bootstrap.Modal(document.getElementById('starredMessagesModal'));
+            modal.show();
 
-    // Add "Clear All Starred" functionality
-    $('#clear-starred').on('click', function() {
-        if (confirm('Are you sure you want to clear all starred messages?')) {
-            // Clear the localStorage
-            localStorage.removeItem('pmChatbot_starredMessages');
+            // Add "Clear All Starred" functionality
+            $('#clear-starred').on('click', function() {
+                if (confirm('Are you sure you want to clear all starred messages?')) {
+                    // Clear the localStorage
+                    localStorage.removeItem('pmChatbot_starredMessages');
+                    
+                    // Remove starred classes from all messages
+                    $('.message.starred').removeClass('starred');
+                    $('.star-btn').html('<i class="fas fa-star-half-alt"></i>');
+                    
+                    // Close the modal
+                    bootstrap.Modal.getInstance(document.getElementById('starredMessagesModal')).hide();
+                }
+            });
+
+            $('#starredMessagesModal').on('hidden.bs.modal', function () {
+                $(this).remove();
+            });
+        });
+
+        // Function to restore starred messages from localStorage
+        function restoreStarredMessages() {
+            const starredMessages = JSON.parse(localStorage.getItem('pmChatbot_starredMessages')) || [];
             
-            // Remove starred classes from all messages
-            $('.message.starred').removeClass('starred');
-            $('.star-btn').html('<i class="far fa-star"></i>');
-            
-            // Close the modal
-            bootstrap.Modal.getInstance(document.getElementById('starredMessagesModal')).hide();
+            // For each message in the chat
+            $('.message').each(function() {
+                const messageEl = $(this);
+                const messageContent = messageEl.find('div:nth-child(2)').html().trim();
+                const timestamp = messageEl.find('.message-timestamp').text();
+                
+                // Check if this message is in the starred list
+                const isStarred = starredMessages.some(msg => 
+                    msg.content === messageContent && msg.timestamp === timestamp);
+                
+                if (isStarred) {
+                    messageEl.addClass('starred');
+                    messageEl.find('.star-btn').html('<i class="fas fa-star"></i>');
+                }
+            });
         }
-    });
-
-    $('#starredMessagesModal').on('hidden.bs.modal', function () {
-        $(this).remove();
-    });
-});
+        
+        // Call restore starred messages when the page loads
+        restoreStarredMessages();
         
         // Focus input on page load
         userInput.focus();
