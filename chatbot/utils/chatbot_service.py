@@ -1,16 +1,14 @@
 import time
 from .openai_client import OpenAIClient
-from .gemini_client import GeminiClient
 from .google_sheets import GoogleSheetsClient
 from .dashboard_service import DashboardService
 
 class ChatbotService:
     """
-    Main service for the project management chatbot with fallback strategy
+    Main service for the project management chatbot
     """
     def __init__(self):
         self.openai_client = OpenAIClient()
-        self.gemini_client = GeminiClient()
         self.sheets_client = GoogleSheetsClient()
         self.dashboard_service = DashboardService(self.sheets_client)
         
@@ -136,14 +134,14 @@ class ChatbotService:
 
     def get_response(self, prompt, sheet_name=None, history=None):
         """
-        Get chatbot response with fallback strategy and improved error handling
-
+        Get chatbot response
+        
         Args:
             prompt (str): User query
             sheet_name (str, optional): Name of the specific sheet to query.
                                         If None, considers all sheets.
             history (list): Chat history for context
-
+            
         Returns:
             dict: Response with source information
         """
@@ -228,8 +226,6 @@ class ChatbotService:
         else:
             sheet_context = ""
         
-        # Try OpenAI first
-        openai_error = None
         try:
             response = self.openai_client.get_chatbot_response(prompt, project_data, history, sheet_context)
             return {
@@ -239,46 +235,22 @@ class ChatbotService:
                 'error': None
             }
         except Exception as e:
-            openai_error = str(e)
+            error_message = str(e)
             print(f"OpenAI error: {e}")
             
             # Check if this is an API key or configuration error
-            if "API key" in openai_error or "configuration" in openai_error or "not configured" in openai_error:
+            if "API key" in error_message or "configuration" in error_message or "not configured" in error_message:
                 return {
                     'response': "The OpenAI service is not properly configured. Please contact the administrator to set up the API key correctly.",
                     'source': 'error',
                     'sheet_name': None,
-                    'error': openai_error
+                    'error': error_message
                 }
             
-            # Fall back to Gemini
-            try:
-                # Add a small delay before trying the fallback service
-                time.sleep(0.5)
-                response = self.gemini_client.get_chatbot_response(prompt, project_data, history, sheet_context)
-                return {
-                    'response': response,
-                    'source': 'gemini',  # CHANGE THIS FROM 'openai' to 'gemini'
-                    'sheet_name': sheet_name,
-                    'error': openai_error  # Include the original OpenAI error for logging
-                }
-            except Exception as gemini_err:
-                gemini_error = str(gemini_err)
-                print(f"Gemini error: {gemini_err}")
-                
-                # Check if this is also an API key or configuration error
-                if "API key" in gemini_error or "configuration" in gemini_error or "not configured" in gemini_error:
-                    return {
-                        'response': "Both AI services (OpenAI and Google Gemini) are not properly configured. Please contact the administrator to set up the API keys correctly.",
-                        'source': 'error',  # Make sure this is 'error'
-                        'sheet_name': None,
-                        'error': f"OpenAI: {openai_error}, Gemini: {gemini_error}"
-                    }
-                
-                # Both services failed for other reasons
-                return {
-                    'response': "I'm sorry, I'm having trouble connecting to my AI services right now. Please try again later.",
-                    'source': 'error',  # Make sure this is 'error'
-                    'sheet_name': None,
-                    'error': f"OpenAI: {openai_error}, Gemini: {gemini_error}"
-                }
+            # Handle other errors
+            return {
+                'response': "I'm sorry, I'm having trouble connecting to the AI service right now. Please try again later.",
+                'source': 'error',
+                'sheet_name': None,
+                'error': error_message
+            }
