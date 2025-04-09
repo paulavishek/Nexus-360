@@ -293,8 +293,37 @@
 }
 
 .assistant-response {
-    background-color: #f8f9fa;
+    background-color: #f0f4f8;
     border-left: 3px solid #4fc3a1 !important;
+    color: #333;
+}
+
+/* Dark mode adjustments for starred messages */
+[data-theme="dark"] .assistant-response {
+    background-color: #2a3038;
+    color: #e9ecef;
+    border-left: 3px solid #56d7b2 !important;
+}
+
+/* Message content styling in starred conversations */
+.message-content {
+    line-height: 1.6;
+    white-space: pre-line;
+}
+
+/* Add better styling to code blocks in starred messages */
+.starred-conversation pre,
+.starred-conversation code {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-family: 'Courier New', monospace;
+}
+
+[data-theme="dark"] .starred-conversation pre,
+[data-theme="dark"] .starred-conversation code {
+    background-color: rgba(0, 0, 0, 0.3);
+    color: #e9ecef;
 }
 
 /* Fix icon visibility issues */
