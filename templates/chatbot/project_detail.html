@@ -86,8 +86,13 @@
                     </div>
                 </div>
 
+                <!-- Calculate budget percentage with safety checks -->
+                {% with budget_value=project.budget|floatformat:2|default:'0'|float %}
+                {% with expenses_value=project.expenses|floatformat:2|default:'0'|float %}
+                {% with remaining_value=budget_value|sub:expenses_value %}
+                
                 <div class="progress mb-2" style="height: 25px;">
-                    {% if project.expenses > project.budget %}
+                    {% if expenses_value > budget_value %}
                         <div class="progress-bar bg-danger" 
                              role="progressbar" 
                              style="width: 100%;" 
@@ -97,17 +102,15 @@
                             Over Budget
                         </div>
                     {% else %}
-                        {% with budget_ratio=project.expenses|floatformat:2|default:'0'|add:'/'|add:project.budget|floatformat:2|default:'0' %}
-                        {% with percentage=budget_ratio|floatformat:2|default:'0'|stringformat:"s"|safe|floatformat:0 %}
+                        {% with percentage=expenses_value|div:budget_value|mul:100|floatformat:0 %}
                         <div class="progress-bar bg-success" 
                              role="progressbar" 
                              data-width="{{ percentage }}%" 
-                             aria-valuenow="{{ percentage }}" 
+                             data-value="{{ percentage }}"
                              aria-valuemin="0" 
                              aria-valuemax="100">
                             {{ percentage }}%
                         </div>
-                        {% endwith %}
                         {% endwith %}
                     {% endif %}
                 </div>
@@ -115,15 +118,19 @@
                 <div class="text-end mt-2">
                     <span class="text-muted">
                         Remaining: 
-                        <span class="{% if project.expenses > project.budget %}text-danger{% else %}text-success{% endif %}">
-                            {% if project.expenses > project.budget %}
-                                -${{ project.expenses|floatformat:2 }} 
+                        <span class="{% if expenses_value > budget_value %}text-danger{% else %}text-success{% endif %}">
+                            {% if expenses_value > budget_value %}
+                                -${{ expenses_value|sub:budget_value|floatformat:2 }}
                             {% else %}
-                                ${{ project.budget|floatformat:2 }}
+                                ${{ remaining_value|floatformat:2 }}
                             {% endif %}
                         </span>
                     </span>
                 </div>
+                
+                {% endwith %}
+                {% endwith %}
+                {% endwith %}
             </div>
         </div>
     </div>
@@ -157,9 +164,26 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-document.querySelectorAll('[data-width]').forEach(function(el) {
-    el.style.width = el.getAttribute('data-width');
-});
+    // Custom filter implementation in JavaScript
+    document.addEventListener('DOMContentLoaded', function() {
+        // Find any elements with data calculation attributes and process them
+        document.querySelectorAll('[data-calc-remaining]').forEach(function(element) {
+            const budget = parseFloat(element.getAttribute('data-budget'));
+            const expenses = parseFloat(element.getAttribute('data-expenses'));
+            if (!isNaN(budget) && !isNaN(expenses)) {
+                const remaining = budget - expenses;
+                element.textContent = remaining.toFixed(2);
+            }
+        });
+        
+        // Update progress bar width if using data attribute
+        document.querySelectorAll('[data-width]').forEach(function(el) {
+            el.style.width = el.getAttribute('data-width');
+        });
+    });
 </script>
 {% endblock %}

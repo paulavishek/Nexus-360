@@ -247,10 +247,11 @@ class DashboardService:
             
             if budget > 0:
                 percentage = round((expenses / budget * 100), 2)
+                remaining = budget - expenses
                 return {
                     'budget': budget,
                     'expenses': expenses,
-                    'remaining': budget - expenses,
+                    'remaining': remaining,  # Correctly calculated remaining amount
                     'percentage': percentage,
                     'status': 'over_budget' if expenses > budget else 'under_budget'
                 }
