@@ -228,13 +228,9 @@ class ChatbotService:
         else:
             sheet_context = ""
         
-                # Try OpenAI first
+        # Try OpenAI first
         openai_error = None
         try:
-            # Force an error to test Gemini fallback
-            raise Exception("Testing Gemini fallback")
-    
-            # Original code
             response = self.openai_client.get_chatbot_response(prompt, project_data, history, sheet_context)
             return {
                 'response': response,
@@ -245,8 +241,6 @@ class ChatbotService:
         except Exception as e:
             openai_error = str(e)
             print(f"OpenAI error: {e}")
-    
-
             
             # Check if this is an API key or configuration error
             if "API key" in openai_error or "configuration" in openai_error or "not configured" in openai_error:
