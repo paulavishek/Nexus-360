@@ -106,7 +106,43 @@
         }
     
         [data-theme="dark"] #starredMessagesModal .assistant-response {
-            background-color: rgba(0, 0, 0, 0.2);
+            background-color: #2a3038;
+            color: #e9ecef !important;
+            border-left: 3px solid #56d7b2 !important;
+        }
+        
+        /* Light mode improvements for starred conversations */
+        #starredMessagesModal .assistant-response {
+            background-color: #f0f4f8;
+            color: #333 !important;
+            border-left: 3px solid #4fc3a1 !important;
+            padding: 1rem !important;
+        }
+        
+        #starredMessagesModal .user-question {
+            background-color: rgba(74, 111, 165, 0.1);
+            border-left: 3px solid #4a6fa5 !important;
+            padding: 1rem !important;
+        }
+        
+        #starredMessagesModal .message-content {
+            line-height: 1.6;
+            white-space: pre-line;
+        }
+        
+        /* Code block styling in starred messages */
+        #starredMessagesModal .message-content pre,
+        #starredMessagesModal .message-content code {
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        [data-theme="dark"] #starredMessagesModal .message-content pre,
+        [data-theme="dark"] #starredMessagesModal .message-content code {
+            background-color: rgba(0, 0, 0, 0.3);
+            color: #e9ecef;
         }
     
         [data-theme="dark"] #starredMessagesModal .text-muted {
