@@ -647,20 +647,22 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-star me-2"></i>Starred Messages</h5>
+                    <h5 class="modal-title"><i class="fas fa-star me-2"></i>Starred Conversations</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="starred-messages-container">
                         ${starredMessages.length === 0 ? 
-                          '<p class="text-center py-4">No starred messages found.</p>' : 
+                          '<p class="text-center py-4">No starred conversations found.</p>' : 
                           starredMessages.map(message => `
-                            <div class="starred-message p-3 mb-3 rounded ${message.isUser ? 'bg-primary text-white' : 'bg-light'}">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="fw-bold">${message.isUser ? 'You' : 'Assistant'}</span>
-                                    <small class="text-opacity-75">${message.timestamp}</small>
+                            <div class="starred-conversation p-3 mb-4 rounded shadow-sm border">
+                                <div class="${message.isUser ? 'user-question' : 'assistant-response'} p-3 rounded ${message.isUser ? 'bg-primary bg-opacity-10' : 'bg-light'}">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fw-bold">${message.isUser ? 'You' : 'Assistant'}</span>
+                                        <small class="text-muted">${message.timestamp}</small>
+                                    </div>
+                                    <div class="message-content">${message.content}</div>
                                 </div>
-                                <div class="message-content">${message.content}</div>
                             </div>
                         `).join('')}
                     </div>
