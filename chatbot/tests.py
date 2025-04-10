@@ -21,7 +21,6 @@ from chatbot.models import Project, ProjectMember
 from chatbot.utils.chatbot_service import ChatbotService
 from chatbot.utils.google_sheets import GoogleSheetsClient
 from chatbot.utils.openai_client import OpenAIClient
-from chatbot.utils.gemini_client import GeminiClient
 
 
 # 1. Unit Tests
@@ -233,13 +232,11 @@ class ChatBotServiceTest(TestCase):
         self.service = ChatbotService()
     
     @patch('chatbot.utils.chatbot_service.OpenAIClient')
-    @patch('chatbot.utils.chatbot_service.GeminiClient')
     @patch('chatbot.utils.chatbot_service.GoogleSheetsClient')
-    def test_init(self, mock_sheets, mock_gemini, mock_openai):
+    def test_init(self, mock_sheets, mock_openai):
         """Test the initialization of the ChatbotService"""
         service = ChatbotService()
         self.assertIsNotNone(service.openai_client)
-        self.assertIsNotNone(service.gemini_client)
         self.assertIsNotNone(service.sheets_client)
     
     def test_is_project_related_query(self):
@@ -285,35 +282,19 @@ class ChatBotServiceTest(TestCase):
         self.assertIsNone(response["error"])
     
     @patch('chatbot.utils.chatbot_service.ChatbotService.get_project_data')
-    def test_get_response_openai_failure_gemini_success(self, mock_get_data):
-        """Test fallback to Gemini when OpenAI fails"""
+    def test_get_response_openai_failure(self, mock_get_data):
+        """Test handling when OpenAI fails"""
         # Mock project data
         mock_get_data.return_value = {"projects": [{"name": "Project A"}]}
         
-        # Mock OpenAI failure and Gemini success
+        # Mock OpenAI failure
         self.service.openai_client.get_chatbot_response = MagicMock(side_effect=Exception("OpenAI failed"))
-        self.service.gemini_client.get_chatbot_response = MagicMock(return_value="Fallback response")
-        
-        # Test the response
-        response = self.service.get_response("Show me Project A")
-        self.assertEqual(response["response"], "Fallback response")
-        self.assertEqual(response["source"], "gemini")
-        self.assertIsNotNone(response["error"])
-    
-    @patch('chatbot.utils.chatbot_service.ChatbotService.get_project_data')
-    def test_get_response_both_failures(self, mock_get_data):
-        """Test handling when both AI services fail"""
-        # Mock project data
-        mock_get_data.return_value = {"projects": [{"name": "Project A"}]}
-        
-        # Mock both services failing
-        self.service.openai_client.get_chatbot_response = MagicMock(side_effect=Exception("OpenAI failed"))
-        self.service.gemini_client.get_chatbot_response = MagicMock(side_effect=Exception("Gemini failed"))
         
         # Test the response
         response = self.service.get_response("Show me Project A")
         self.assertIn("I'm sorry", response["response"])
         self.assertEqual(response["source"], "error")
+        self.assertIsNotNone(response["error"])
 
 
 # OpenAI and Gemini Client Tests
@@ -339,45 +320,6 @@ class OpenAIClientTest(TestCase):
         # Test with minimal parameters
         response = self.client.get_chatbot_response("Test prompt")
         self.assertEqual(response, "Test response")
-
-
-class GeminiClientTest(TestCase):
-    def setUp(self):
-        self.client = GeminiClient()
-    
-    @patch('chatbot.utils.gemini_client.genai')
-    def test_get_chatbot_response(self, mock_genai):
-        """Test getting a response from Gemini"""
-        # Mock Gemini response
-        mock_model = MagicMock()
-        mock_response = MagicMock()
-        mock_response.text = "Gemini test response"
-        mock_model.generate_content.return_value = mock_response
-        mock_genai.GenerativeModel.return_value = mock_model
-        
-        # Test with minimal parameters
-        response = self.client.get_chatbot_response("Test prompt")
-        self.assertEqual(response, "Gemini test response")
-        
-        # Test with all parameters
-        response = self.client.get_chatbot_response(
-            "Test prompt", 
-            project_data={"projects": [{"name": "Project A"}]},
-            history=[{"role": "user", "content": "Previous message"}],
-            sheet_context="Using sheet: Marketing"
-        )
-        self.assertEqual(response, "Gemini test response")
-        mock_model.generate_content.assert_called()
-    
-    @patch('chatbot.utils.gemini_client.genai')
-    def test_exception_handling(self, mock_genai):
-        """Test error handling in Gemini client"""
-        # Mock Gemini to raise an exception
-        mock_genai.GenerativeModel.side_effect = Exception("Gemini API error")
-        
-        # Test exception handling
-        response = self.client.get_chatbot_response("Test prompt")
-        self.assertIn("I'm sorry", response)
 
 
 # 2. Integration Tests
@@ -680,16 +622,13 @@ class EdgeCaseTest(TestCase):
     
     @unittest.skip("Skipping due to implementation differences")
     @patch('chatbot.utils.chatbot_service.OpenAIClient')
-    @patch('chatbot.utils.chatbot_service.GeminiClient')
-    def test_both_ai_services_fail(self, mock_gemini, mock_openai):
+    def test_both_ai_services_fail(self, mock_openai):
         """Test when both AI services fail with API key errors"""
         # Original test code
         mock_openai_instance = mock_openai.return_value
-        mock_gemini_instance = mock_gemini.return_value
         
         # Configure the mocks to return exceptions
         mock_openai_instance.get_chatbot_response.side_effect = Exception("API key not configured")
-        mock_gemini_instance.get_chatbot_response.side_effect = Exception("API key not configured")
         
         # Mock get_project_data to avoid errors
         with patch.object(self.service, 'get_project_data', return_value={}):
@@ -700,15 +639,12 @@ class EdgeCaseTest(TestCase):
         self.assertEqual(response["source"], "error")
 
 @patch('chatbot.utils.chatbot_service.OpenAIClient')
-@patch('chatbot.utils.chatbot_service.GeminiClient')
-def test_both_ai_services_fail_returns_error_message(self, mock_gemini, mock_openai):
+def test_both_ai_services_fail_returns_error_message(self, mock_openai):
     """Test error handling when both AI services fail"""
     mock_openai_instance = mock_openai.return_value
-    mock_gemini_instance = mock_gemini.return_value
     
     # Configure both services to fail
     mock_openai_instance.get_chatbot_response.side_effect = Exception("API key not configured")
-    mock_gemini_instance.get_chatbot_response.side_effect = Exception("API key not configured")
     
     with patch.object(self.service, 'get_project_data', return_value={}):
         with patch.object(self.service, '_detect_sheet_name_in_query', return_value=None):
@@ -979,11 +915,9 @@ class ChatBotResilienceTest(TestCase):
         
         # Replace the real clients with mocks
         service.openai_client = MagicMock()
-        service.gemini_client = MagicMock()
         
         # Case 1: Both services working
         service.openai_client.get_chatbot_response.return_value = "OpenAI response"
-        service.gemini_client.get_chatbot_response.return_value = "Gemini response"
         
         # Patch get_project_data to avoid DB calls
         with patch.object(service, 'get_project_data', return_value={}):
@@ -999,7 +933,6 @@ class ChatBotResilienceTest(TestCase):
             self.assertIn("response", response2)
             
             # Both services fail
-            service.gemini_client.get_chatbot_response.side_effect = Exception("Gemini error")
             response3 = service.get_response("Test prompt")
             self.assertIsInstance(response3, dict)
             self.assertIn("response", response3)

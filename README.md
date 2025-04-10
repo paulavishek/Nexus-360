@@ -1,29 +1,30 @@
 # Project Management Chatbot
 
-A Django-based chatbot application that answers questions about projects stored in a database. The chatbot uses OpenAI's GPT-4o-mini as the primary model with Google Gemini as a fallback.
+## Overview
+A Django-based chatbot application that answers questions about projects stored in a database. The chatbot uses OpenAI's GPT-4o-mini as its model.
 
 ## Features
 
-- **Project-specific AI Chatbot**: Answer questions about projects, team members, budgets, and more
-- **Google Sheets Integration**: Use Google Sheets as an initial database (with future migration path to MySQL/PostgreSQL)
-- **Fallback Strategy**: Automatically switches to Google Gemini if OpenAI API fails
-- **Project Dashboard**: View all projects, their statuses, and budget information
-- **Budget Analysis**: See which projects are over/under budget with visual indicators
-- **Responsive Design**: Works on desktop and mobile devices
+- **Project Database**: Access project information from Google Sheets
+- **Natural Language Interface**: Ask questions about projects in natural language
+- **Dashboard Integration**: View project statistics and analytics
+- **Budget Analysis**: Analyze project budgets and identify over/under budget projects
+- **Multi-Sheet Support**: Query data across multiple project sheets
+
+## Requirements
+
+- Python 3.9+
+- Django 5.0+
+- OpenAI API key
+- Google Sheets API credentials
 
 ## Setup Instructions
 
-### Prerequisites
-
-- Python 3.7+
-- Django 4.0+
-- Google Sheets API credentials
-- OpenAI API key
-- Google Gemini API key
-
-### Installation
-
-1. Clone the repository or download the source code
+1. Clone the repository:
+   ```
+   git clone https://github.com/yourusername/pm_chatbot.git
+   cd pm_chatbot
+   ```
 
 2. Create and activate a virtual environment:
    ```
@@ -31,33 +32,38 @@ A Django-based chatbot application that answers questions about projects stored 
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. Install the required packages:
+3. Install dependencies:
    ```
    pip install -r requirements.txt
    ```
 
-4. Update the `.env` file with your API keys:
+4. Create a `.env` file in the project root with the following variables:
    ```
-   # OpenAI API key
+   # Django settings
+   DJANGO_SECRET_KEY=your_django_secret_key_here
+   DEBUG=True
+   ALLOWED_HOSTS=localhost,127.0.0.1
+
+   # API keys
    OPENAI_API_KEY=your_openai_api_key_here
-   
-   # Google Gemini API key
-   GOOGLE_GEMINI_API_KEY=your_google_gemini_api_key_here
-   
-   # Google Sheets credentials
-   GOOGLE_SHEETS_CREDENTIALS_FILE=path_to_your_google_credentials.json
+
+   # Google Sheets configuration
+   GOOGLE_SHEETS_CREDENTIALS_FILE=path_to_your_google_sheets_credentials.json
    GOOGLE_SHEETS_PROJECT_DB=your_google_sheets_id_here
+   
+   # Optional: Additional sheets in format "name1:id1,name2:id2"
+   ADDITIONAL_SHEETS=Marketing:sheet_id_1,Development:sheet_id_2
    ```
 
-5. Set up your Google Sheets:
-   - Create a new Google Sheet with two worksheets: "Projects" and "Members"
-   - The "Projects" worksheet should have columns: name, description, start_date, end_date, budget, expenses, status
-   - The "Members" worksheet should have columns: project_name, name, role, email
-   
-6. Run database migrations:
+5. Run migrations:
    ```
    python manage.py makemigrations
    python manage.py migrate
+   ```
+
+6. Create an admin user:
+   ```
+   python manage.py create_admin --username admin --password adminpassword --email admin@example.com
    ```
 
 7. Start the development server:
@@ -67,28 +73,30 @@ A Django-based chatbot application that answers questions about projects stored 
 
 8. Access the application at http://localhost:8000
 
-## Google Sheets Setup
-
-1. Create a project in the [Google Cloud Console](https://console.cloud.google.com/)
-2. Enable the Google Sheets API and Google Drive API
-3. Create a service account and download the JSON credentials file
-4. Share your Google Sheet with the service account email address (with editor permission)
-5. Update the `.env` file with the path to the credentials file and your Google Sheet ID
-
 ## Usage
 
-- **Chatbot**: Ask questions about projects, team sizes, budget information, etc.
-- **Projects View**: Browse all projects and see their status at a glance
-- **Budget Analysis**: Get insights into which projects are over or under budget
+1. **Login**: Access the system using the admin credentials or register a new user
+2. **Chat Interface**: Ask questions about projects such as:
+   - "Show me all active projects"
+   - "Which projects are over budget?"
+   - "What's the status of Project X?"
+   - "Who are the team members in the Marketing sheet?"
+3. **Project Dashboard**: Navigate to the Projects section to see all projects
+4. **Budget Analysis**: View budget statistics in the Budget Analysis section
 
-## Future Enhancements
+## Advanced Configuration
 
-- Migration from Google Sheets to MySQL or PostgreSQL
-- User authentication and role-based access
-- Admin interface for managing projects and team members
-- Email notifications for budget alerts
-- Custom chatbot training with project-specific documentation
+- **Caching**: Project data is cached for 5 minutes to improve performance
+- **Additional Sheets**: Add more Google Sheets by configuring the ADDITIONAL_SHEETS environment variable
+
+## Security
+
+The application implements standard Django security practices:
+- CSRF protection for all forms
+- XSS protection
+- Content-Type sniffing prevention
+- X-Frame-Options set to DENY
 
 ## License
 
-MIT License
+[MIT License](LICENSE)
