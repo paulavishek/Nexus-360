@@ -74,7 +74,17 @@ class ChatbotService:
             context_text += f"{context}\n"
             
         try:
+            # The enhanced OpenAI client now handles retries and rate limits internally
             response = self.openai_client.get_chatbot_response(prompt, database_data, history, context_text)
+            
+            # Check if response is from a fallback mechanism (for better UI feedback)
+            if "currently experiencing high demand" in response or "I encountered an error" in response:
+                return {
+                    'response': response,
+                    'source': 'fallback',
+                    'error': "Rate limit or API error"
+                }
+            
             return {
                 'response': response,
                 'source': 'openai',
@@ -82,7 +92,7 @@ class ChatbotService:
             }
         except Exception as e:
             error_message = str(e)
-            print(f"OpenAI error: {e}")
+            print(f"OpenAI client error: {e}")
             
             # Check if this is an API key or configuration error
             if "API key" in error_message or "configuration" in error_message or "not configured" in error_message:

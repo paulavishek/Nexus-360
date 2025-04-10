@@ -420,6 +420,40 @@
 .refresh-data-btn:hover .refresh-icon {
     animation: rotateAnimation 1s linear infinite;
 }
+
+/* Error message styling */
+.error-message {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-left: 3px solid #ffc107;
+    padding: 8px 12px;
+    font-size: 0.9em;
+    margin-top: 8px;
+    border-radius: 4px;
+}
+
+.retry-btn {
+    margin-top: 8px;
+    font-size: 0.85em;
+    padding: 3px 8px;
+}
+
+/* Rate limit specific styling */
+.rate-limit-message {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-left: 3px solid #ffc107;
+}
+
+/* Countdown timer styling */
+.countdown {
+    font-weight: bold;
+    color: #dc3545;
+}
+
+/* Server error styling */
+.server-error-message {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-left: 3px solid #dc3545;
+}
 </style>
 {% endblock %}
 
@@ -525,6 +559,10 @@
         const refreshSpinner = $('#refresh-spinner');
         let chatHistory = [];
         let refreshDataMode = false; // Track if the next request should bypass cache
+        let isRetrying = false; // Track if we're in retry mode
+        let lastUserMessage = ''; // Store the last user message for retry
+        let retryWaitTime = 0; // Wait time for rate limit retries
+        let retryCountdown; // For the countdown timer
 
         // Function to get CSRF token from cookies
         function getCookie(name) {
@@ -589,6 +627,8 @@
                 if (source) {
                     if (source === 'openai') {
                         sourceInfo += '<i class="fas fa-robot me-1"></i> OpenAI GPT-4o-mini';
+                    } else if (source === 'error' || source === 'fallback') {
+                        sourceInfo += '<i class="fas fa-exclamation-triangle me-1"></i> System Message';
                     } else {
                         sourceInfo += source;
                     }
@@ -598,6 +638,30 @@
                 }
                 if (sourceInfo) {
                     messageHTML += `<div class="message-source">${sourceInfo}</div>`;
+                }
+
+                // Add rate limit specific UI if needed
+                if (source === 'fallback' && content.includes('high demand')) {
+                    messageHTML += `
+                        <div class="error-message rate-limit-message">
+                            <p><i class="fas fa-clock me-1"></i> The AI service is experiencing high demand. 
+                            <span id="retry-countdown" class="countdown"></span></p>
+                            <button class="btn btn-sm btn-warning retry-btn" id="retry-btn">
+                                <i class="fas fa-redo me-1"></i> Retry Now
+                            </button>
+                        </div>
+                    `;
+                    retryWaitTime = 30; // Set initial retry wait time to 30 seconds
+                }
+                
+                // Add generic error UI
+                if (source === 'error') {
+                    messageHTML += `
+                        <div class="error-message server-error-message">
+                            <i class="fas fa-exclamation-triangle me-1"></i> 
+                            There was an error processing your request. You can try again later.
+                        </div>
+                    `;
                 }
 
                 // Add message actions for bot messages
@@ -620,32 +684,68 @@
 
             // Scroll to bottom
             chatContainer.scrollTop(chatContainer.prop('scrollHeight'));
+            
+            // Start countdown if rate limited
+            if (source === 'fallback' && content.includes('high demand')) {
+                startRetryCountdown();
+            }
 
-            // Add to chat history
-            chatHistory.push({
-                role: sender === 'user' ? 'user' : 'assistant',
-                content: content
-            });
+            // Add to chat history (don't add error messages to history)
+            if (source !== 'error' && source !== 'fallback') {
+                chatHistory.push({
+                    role: sender === 'user' ? 'user' : 'assistant',
+                    content: content
+                });
 
-            // Keep history at a reasonable size (last 20 messages)
-            if (chatHistory.length > 20) {
-                chatHistory = chatHistory.slice(chatHistory.length - 20);
+                // Keep history at a reasonable size (last 20 messages)
+                if (chatHistory.length > 20) {
+                    chatHistory = chatHistory.slice(chatHistory.length - 20);
+                }
             }
         }
 
+        // Function to start retry countdown
+        function startRetryCountdown() {
+            const countdownEl = $('#retry-countdown');
+            countdownEl.text(`(Wait ${retryWaitTime} seconds)`);
+            
+            clearInterval(retryCountdown);
+            retryCountdown = setInterval(() => {
+                retryWaitTime -= 1;
+                if (retryWaitTime <= 0) {
+                    clearInterval(retryCountdown);
+                    countdownEl.text('(Ready to retry)');
+                    $('#retry-btn').prop('disabled', false);
+                } else {
+                    countdownEl.text(`(Wait ${retryWaitTime} seconds)`);
+                    $('#retry-btn').prop('disabled', true);
+                }
+            }, 1000);
+        }
+
         // Function to send message to backend
-        function sendMessage() {
-            const message = userInput.val().trim();
+        function sendMessage(isRetry = false) {
+            let message;
+            if (isRetry) {
+                message = lastUserMessage;
+                isRetrying = false;
+            } else {
+                message = userInput.val().trim();
+                lastUserMessage = message; // Store for potential retry
+            }
+            
             if (message === '') return;
 
             // Get selected sheet if any
             const selectedSheet = sheetSelector.val();
 
-            // Add user message to chat
-            addMessage(message, 'user');
-
-            // Clear input
-            userInput.val('');
+            // Only add user message to chat if not retrying
+            if (!isRetry) {
+                addMessage(message, 'user');
+                
+                // Clear input
+                userInput.val('');
+            }
 
             // Show typing indicator
             typingIndicator.show();
@@ -678,6 +778,11 @@
                         data.source, 
                         data.sheet_name
                     );
+                    
+                    // If this was a successful retry, increase wait time for future rate limits
+                    if (isRetry && data.source === 'openai') {
+                        retryWaitTime = Math.min(retryWaitTime * 2, 300); // Max 5 minutes
+                    }
                 },
                 error: function (xhr, status, error) {
                     // Reset refresh data mode after use
@@ -691,12 +796,18 @@
                     if (xhr.responseJSON && xhr.responseJSON.error) {
                         errorMessage += " Details: " + xhr.responseJSON.error;
                     }
-                    addMessage(errorMessage, 'bot', 'Error');
+                    addMessage(errorMessage, 'bot', 'error');
 
                     console.error("AJAX Error:", status, error);
                 }
             });
         }
+
+        // Handle retry button click
+        $(document).on('click', '#retry-btn', function() {
+            isRetrying = true;
+            sendMessage(true);
+        });
 
         // Handle refresh data button click
         refreshDataBtn.on('click', function() {
