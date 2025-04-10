@@ -38,10 +38,15 @@ class GeminiClient:
             str: Chatbot response
         """
         try:
-            # Create a system prompt with context
+            # Create a system prompt with context that allows for both database and general knowledge questions
             system_message = """
-            You are a helpful assistant that provides information based on the connected database.
-            You can answer questions about the data stored in the database and provide general information.
+            You are a helpful assistant that can answer both database-related questions and general knowledge questions.
+            
+            When responding to questions about the database, refer to the database information provided and be precise and specific.
+            
+            For general knowledge questions not covered by the database, you should provide helpful and accurate information based on your training.
+            DO NOT refuse to answer general knowledge questions that aren't related to the database.
+            
             Always be concise, professional, and helpful.
             """
             
@@ -49,12 +54,16 @@ class GeminiClient:
             if context:
                 system_message += f"\n\n{context}"
             
+            # Analyze the database data to determine its structure and content
             if database_data:
-                system_message += "\nHere is the current database data to reference when answering questions:\n"
+                system_message += "\nHere is the current database data to reference when answering database-related questions:\n"
                 system_message += str(database_data)
+                
+                # Adding clear instruction about general knowledge
+                system_message += "\n\nIMPORTANT: If the user asks a question that's not related to this database data, you should still answer it using your general knowledge. Don't refuse to answer just because the information isn't in the database."
             
-            # Configure the model
-            model = genai.GenerativeModel('gemini-1.0-pro')
+            # Configure the model - using the latest available Gemini model name
+            model = genai.GenerativeModel('gemini-1.5-flash')
             
             # Format chat history for Gemini
             chat_session = model.start_chat(history=[])
@@ -70,8 +79,17 @@ class GeminiClient:
                         
                 chat_session = model.start_chat(history=formatted_history)
             
-            # Send system prompt as initial context
-            response = chat_session.send_message(system_message + "\n\n" + prompt)
+            # Check if this is likely a general knowledge question
+            is_general_knowledge = self._is_likely_general_knowledge(prompt, database_data)
+            
+            # Customize the message based on question type
+            if is_general_knowledge:
+                full_prompt = f"{system_message}\n\nThe following question appears to be a general knowledge question not related to the database. Please answer it using your training:\n\n{prompt}"
+            else:
+                full_prompt = f"{system_message}\n\n{prompt}"
+                
+            # Send message to Gemini
+            response = chat_session.send_message(full_prompt)
             
             # Return the response text
             return response.text
@@ -79,3 +97,63 @@ class GeminiClient:
         except Exception as e:
             print(f"Error with Gemini API: {e}")
             return f"I encountered an error while using my fallback AI service: {str(e)}. Please try again later."
+    
+    def _is_likely_general_knowledge(self, prompt, database_data):
+        """
+        Analyze the prompt to determine if it's likely to be a general knowledge question
+        not related to the database
+        """
+        # Common general knowledge indicators
+        general_knowledge_indicators = [
+            "what is", "what are", "who is", "who was", "when was", "when did",
+            "how does", "why does", "explain", "define", "tell me about"
+        ]
+        
+        # Convert prompt to lowercase for easier matching
+        prompt_lower = prompt.lower()
+        
+        # Database-related terms that might exist in the database
+        database_related_terms = ["database", "data", "table", "record", "field", "project", 
+                                  "status", "user", "id", "name", "date"]
+        
+        # Try to analyze database fields if database_data is provided
+        database_terms = set()
+        if database_data:
+            try:
+                # Extract potential field names and values from the database
+                if isinstance(database_data, dict):
+                    for key, value in database_data.items():
+                        database_terms.add(key.lower())
+                        if isinstance(value, dict):
+                            for subkey in value.keys():
+                                database_terms.add(subkey.lower())
+                                
+                                # If we have worksheets with records
+                                if isinstance(value[subkey], list) and len(value[subkey]) > 0:
+                                    # Add field names from the first record
+                                    if isinstance(value[subkey][0], dict):
+                                        for field in value[subkey][0].keys():
+                                            database_terms.add(field.lower())
+                                            
+                                            # Add some values as potential search terms
+                                            if isinstance(value[subkey][0][field], str):
+                                                database_terms.add(value[subkey][0][field].lower())
+            except:
+                # Fallback to basic terms if we can't analyze the database
+                pass
+            
+            # Add extracted terms to our database terms
+            database_related_terms.extend(list(database_terms))
+        
+        # Check if any database term appears in the prompt
+        for term in database_related_terms:
+            if term in prompt_lower and len(term) > 2:  # Avoid short terms that might cause false positives
+                return False  # Likely database related
+                
+        # Check for general knowledge indicators
+        for indicator in general_knowledge_indicators:
+            if prompt_lower.startswith(indicator):
+                return True  # Likely general knowledge
+                
+        # Default case - hard to determine
+        return False
