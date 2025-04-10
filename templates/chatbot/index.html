@@ -513,6 +513,11 @@
                     <button id="view-starred" class="btn btn-sm btn-outline-primary ms-2">
                         <i class="fas fa-star me-1"></i>View Starred
                     </button>
+                    
+                    <!-- Add Reset History button -->
+                    <button id="reset-history" class="btn btn-sm btn-outline-danger ms-2">
+                        <i class="fas fa-trash-alt me-1"></i>Reset History
+                    </button>
                 </div>
             </div>
         </div>
@@ -583,12 +588,16 @@
         const viewStarredBtn = $('#view-starred');
         const refreshDataBtn = $('#refresh-data');
         const refreshSpinner = $('#refresh-spinner');
+        const resetHistoryBtn = $('#reset-history');
         let chatHistory = [];
         let refreshDataMode = false; // Track if the next request should bypass cache
         let isRetrying = false; // Track if we're in retry mode
         let lastUserMessage = ''; // Store the last user message for retry
         let retryWaitTime = 0; // Wait time for rate limit retries
         let retryCountdown; // For the countdown timer
+        
+        // Initialize by loading saved chat history
+        initializeChatHistory();
 
         // Function to get CSRF token from cookies
         function getCookie(name) {
@@ -674,6 +683,157 @@
             }
         }
 
+        // Function to save chat history to localStorage
+        function saveChatHistory() {
+            try {
+                // Save messages from DOM to preserve formatting and timestamps
+                const savedMessages = [];
+                $('.message').each(function() {
+                    const messageEl = $(this);
+                    const isBot = messageEl.hasClass('bot-message');
+                    const content = messageEl.find('div:nth-child(2)').html().trim();
+                    const timestamp = messageEl.find('.message-timestamp').text().trim();
+                    const source = isBot ? messageEl.find('.message-source').text().trim() : null;
+                    
+                    // Check if message contains sheet badge
+                    let sheetName = null;
+                    const sheetBadge = messageEl.find('.sheet-badge');
+                    if (sheetBadge.length > 0) {
+                        sheetName = sheetBadge.text().replace('Source:', '').trim();
+                    }
+                    
+                    // Store message
+                    savedMessages.push({
+                        content: content,
+                        sender: isBot ? 'assistant' : 'user',
+                        timestamp: timestamp,
+                        source: source,
+                        sheetName: sheetName
+                    });
+                });
+                
+                // Save to localStorage
+                localStorage.setItem('pmChatbot_chatHistory', JSON.stringify(savedMessages));
+                
+                // Also save for API history tracking
+                chatHistory = savedMessages.map(msg => ({
+                    role: msg.sender,
+                    content: $(document.createElement('div')).html(msg.content).text() // Convert HTML back to plain text
+                }));
+                
+                console.log('Chat history saved:', savedMessages.length, 'messages');
+            } catch (e) {
+                console.error('Error saving chat history:', e);
+            }
+        }
+        
+        // Function to restore chat history from localStorage
+        function restoreChatHistory() {
+            try {
+                const savedMessages = JSON.parse(localStorage.getItem('pmChatbot_chatHistory'));
+                if (savedMessages && savedMessages.length > 0) {
+                    // Clear initial welcome message if we have saved history
+                    chatContainer.empty();
+                    
+                    // Add typing indicator back
+                    chatContainer.append('<div class="typing-indicator" id="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>');
+                    typingIndicator = $('#typing-indicator');
+                    
+                    // For each saved message, recreate it in the chat
+                    savedMessages.forEach(msg => {
+                        const isBot = msg.sender === 'assistant';
+                        const messageClass = isBot ? 'bot-message' : 'user-message';
+                        const senderName = isBot ? 'Assistant' : 'You';
+                        
+                        let messageHTML = `<div class="${messageClass} message">`;
+                        messageHTML += `<div class="message-header">
+                                    <span>${senderName}</span>
+                                    <span class="message-timestamp">${msg.timestamp}</span>
+                                </div>`;
+                        messageHTML += `<div>${msg.content}</div>`;
+                        
+                        if (isBot) {
+                            // Add source info if available
+                            if (msg.source) {
+                                // Extract model name from source string
+                                const modelNames = {
+                                    'Google Gemini 1.5-Flash': 'gemini',
+                                    'OpenAI GPT-4o-mini': 'openai',
+                                    'OpenAI GPT-4o-mini (Fallback)': 'openai-fallback'
+                                };
+                                
+                                // Find which model was used
+                                let modelType = 'unknown';
+                                for (const [name, type] of Object.entries(modelNames)) {
+                                    if (msg.source.includes(name)) {
+                                        modelType = type;
+                                        break;
+                                    }
+                                }
+                                
+                                const modelInfo = getModelInfo(modelType);
+                                let sourceInfo = `${modelInfo.icon} ${modelInfo.name}${modelInfo.badge}`;
+                                
+                                if (msg.sheetName) {
+                                    sourceInfo += ` <span class="badge bg-secondary sheet-badge">Source: ${msg.sheetName}</span>`;
+                                }
+                                
+                                messageHTML += `<div class="message-source">${sourceInfo}</div>`;
+                            }
+                            
+                            // Add message actions for bot messages
+                            messageHTML += `
+                                <div class="message-actions">
+                                    <button class="message-action-btn copy-btn" title="Copy to clipboard">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                    <button class="message-action-btn star-btn" title="Star this conversation">
+                                        <i class="fas fa-star-half-alt"></i>
+                                    </button>
+                                </div>
+                            `;
+                        }
+                        
+                        messageHTML += `</div>`;
+                        typingIndicator.before(messageHTML);
+                        
+                        // Add to chat history array for API context
+                        chatHistory.push({
+                            role: msg.sender,
+                            content: $(document.createElement('div')).html(msg.content).text() // Convert HTML to plain text
+                        });
+                    });
+                    
+                    // Restore any starred messages
+                    restoreStarredMessages();
+                    
+                    console.log('Chat history restored:', savedMessages.length, 'messages');
+                    
+                    // Scroll to bottom
+                    setTimeout(() => {
+                        chatContainer.scrollTop(chatContainer.prop('scrollHeight'));
+                    }, 100);
+                }
+            } catch (e) {
+                console.error('Error restoring chat history:', e);
+            }
+        }
+        
+        // Initialize chat history
+        function initializeChatHistory() {
+            // Restore chat from localStorage
+            restoreChatHistory();
+            
+            // Keep chat history in sync with localStorage
+            const observer = new MutationObserver(function(mutations) {
+                // When chat content changes, save it
+                saveChatHistory();
+            });
+            
+            // Observe chat container for changes to its children
+            observer.observe(chatContainer[0], { childList: true, subtree: true });
+        }
+        
         // Function to add a new message to the chat
         function addMessage(content, sender, source = null, sheetName = null) {
             const messageClass = sender === 'user' ? 'user-message' : 'bot-message';
@@ -757,6 +917,8 @@
                     chatHistory = chatHistory.slice(chatHistory.length - 20);
                 }
             }
+            
+            // Chat will be saved through the mutation observer
         }
 
         // Function to start retry countdown
@@ -900,6 +1062,50 @@
                     refreshDataBtn.prop('disabled', false);
                 }
             });
+        });
+        
+        // Handle reset history button click
+        resetHistoryBtn.on('click', function() {
+            if (confirm('Are you sure you want to reset the chat history? This will clear all messages.')) {
+                // Clear localStorage
+                localStorage.removeItem('pmChatbot_chatHistory');
+                
+                // Clear chat window
+                chatContainer.empty();
+                
+                // Add welcome message back
+                let welcomeHTML = `
+                <div class="bot-message message">
+                    <div class="message-header">
+                        <span>Assistant</span>
+                        <span class="message-timestamp">${getCurrentTimestamp()}</span>
+                    </div>
+                    <div>Hello! I'm your database assistant. How can I help you today?</div>
+                    <div class="message-source">
+                        <i class="fas fa-robot me-1"></i> Google Gemini 1.5-Flash <span class="model-badge gemini">Gemini</span>
+                    </div>
+                    <div class="message-actions">
+                        <button class="message-action-btn copy-btn" title="Copy to clipboard">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="message-action-btn star-btn" title="Star this conversation">
+                            <i class="fas fa-star-half-alt"></i>
+                        </button>
+                    </div>
+                </div>`;
+                
+                chatContainer.append(welcomeHTML);
+                
+                // Add typing indicator back
+                chatContainer.append('<div class="typing-indicator" id="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>');
+                typingIndicator = $('#typing-indicator');
+                
+                // Reset chat history array
+                chatHistory = [];
+                
+                // Show system message
+                addMessage('Chat history has been reset.', 'bot', 'System');
+            }
         });
 
         // Send button click handler
