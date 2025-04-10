@@ -9,15 +9,15 @@ class OpenAIClient:
     def __init__(self):
         openai.api_key = settings.OPENAI_API_KEY
     
-    def get_chatbot_response(self, prompt, project_data=None, history=None, sheet_context=None):
+    def get_chatbot_response(self, prompt, database_data=None, history=None, context=None):
         """
         Get response from OpenAI API using GPT-4o-mini with improved error handling
         
         Args:
             prompt (str): User query
-            project_data (dict): Project data to inform the chatbot
+            database_data (dict): Database data to inform the chatbot
             history (list): Chat history for context
-            sheet_context (str): Additional context about which sheet(s) are being queried
+            context (str): Additional context for the chatbot
             
         Returns:
             str: Chatbot response
@@ -29,20 +29,20 @@ class OpenAIClient:
             # Prepare messages
             messages = []
             
-            # Add system message with context about the chatbot and project data
+            # Add system message with context about the chatbot and database data
             system_message = """
-            You are a helpful project management assistant that provides information about projects in the database.
-            You can answer questions about projects, team members, budgets, and general project management advice.
+            You are a helpful assistant that provides information based on the connected database.
+            You can answer questions about the data stored in the database and provide general information.
             Always be concise, professional, and helpful.
             """
             
-            # Add sheet context if provided
-            if sheet_context:
-                system_message += f"\n\n{sheet_context}"
+            # Add context if provided
+            if context:
+                system_message += f"\n\n{context}"
             
-            if project_data:
-                system_message += "\nHere is the current project data to reference when answering questions:\n"
-                system_message += str(project_data)
+            if database_data:
+                system_message += "\nHere is the current database data to reference when answering questions:\n"
+                system_message += str(database_data)
             
             messages.append({"role": "system", "content": system_message})
             
