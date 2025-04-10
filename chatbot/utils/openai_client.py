@@ -3,10 +3,12 @@ import time
 import random
 import openai
 from django.conf import settings
+from .gemini_client import GeminiClient
 
 class OpenAIClient:
     """
     Client for interacting with OpenAI API with improved rate limit handling
+    and Google Gemini fallback
     """
     def __init__(self):
         openai.api_key = settings.OPENAI_API_KEY
@@ -15,10 +17,18 @@ class OpenAIClient:
         self.initial_retry_delay = 1  # Start with 1 second
         self.max_retry_delay = 60     # Maximum delay of 60 seconds
         
+        # Initialize Gemini client for fallback
+        try:
+            self.gemini_client = GeminiClient()
+            self.gemini_available = True
+        except Exception as e:
+            print(f"Gemini client initialization error: {e}")
+            self.gemini_available = False
+        
     def get_chatbot_response(self, prompt, database_data=None, history=None, context=None):
         """
         Get response from OpenAI API using GPT-4o-mini with improved error handling
-        and exponential backoff for rate limits
+        and exponential backoff for rate limits. Falls back to Gemini if necessary.
         
         Args:
             prompt (str): User query
@@ -39,7 +49,7 @@ class OpenAIClient:
         system_message = """
         You are a helpful assistant that provides information based on the connected database.
         You can answer questions about the data stored in the database and provide general information.
-        Always be concise, professional, and helpful.
+        Be precise, specific, and concise in your answers. Focus on facts from the database when available.
         """
         
         # Add context if provided
@@ -67,12 +77,12 @@ class OpenAIClient:
         retries = 0
         while retries <= self.max_retries:
             try:
-                # Try to call the API
+                # Try to call the API with reduced temperature and max_tokens as requested
                 response = openai.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=messages,
-                    max_tokens=1000,
-                    temperature=0.7,
+                    max_tokens=500,  # Reduced from 1000 to 500 to save costs
+                    temperature=0.3,  # Reduced from 0.7 to 0.3 for more precise answers
                     timeout=15  # 15 second timeout
                 )
                 
@@ -86,7 +96,9 @@ class OpenAIClient:
                     time.sleep(delay)
                     continue
                 else:
-                    raise TimeoutError(f"OpenAI API request timed out after {self.max_retries} retries")
+                    # Try Gemini fallback after exhausting OpenAI retries
+                    return self._use_gemini_fallback(prompt, database_data, history, context, 
+                                                   "OpenAI API request timed out")
                     
             except openai.RateLimitError:
                 if retries < self.max_retries:
@@ -96,18 +108,15 @@ class OpenAIClient:
                     time.sleep(delay)
                     continue
                 else:
-                    # If we've exhausted retries, fall back to a default response
-                    fallback_msg = (
-                        "I'm currently experiencing high demand and can't process your request right now. "
-                        "Please try again in a few minutes. In the meantime, you can try asking a simpler question "
-                        "or refreshing the page."
-                    )
-                    return fallback_msg
+                    # Try Gemini fallback for rate limit errors
+                    return self._use_gemini_fallback(prompt, database_data, history, context, 
+                                                   "OpenAI rate limit exceeded")
                     
             except openai.APIError as e:
                 error_message = str(e)
                 if "model_not_found" in error_message:
-                    return "I'm having trouble connecting to my AI service. The model 'gpt-4o-mini' may not be available. Please try a different model or contact support."
+                    return self._use_gemini_fallback(prompt, database_data, history, context, 
+                                                   "OpenAI model not found")
                 elif "context_length_exceeded" in error_message:
                     return "Your conversation is too long for me to process. Please try starting a new conversation or ask a shorter question."
                 else:
@@ -118,11 +127,46 @@ class OpenAIClient:
                         time.sleep(delay)
                         continue
                     else:
-                        return f"I encountered an error while processing your request: {error_message}. Please try again later."
+                        return self._use_gemini_fallback(prompt, database_data, history, context, error_message)
                         
             except Exception as e:
                 print(f"Unexpected error with OpenAI API: {e}")
-                return "I'm having technical difficulties right now. Please try again later or contact support if this persists."
+                return self._use_gemini_fallback(prompt, database_data, history, context, str(e))
                 
         # This should rarely happen since we return from the loop
-        return "I couldn't process your request after multiple attempts. Please try again later."
+        return self._use_gemini_fallback(prompt, database_data, history, context, 
+                                       "Maximum retries exceeded")
+    
+    def _use_gemini_fallback(self, prompt, database_data, history, context, error_reason):
+        """
+        Use Gemini as a fallback when OpenAI is unavailable
+        
+        Args:
+            prompt (str): User query
+            database_data (dict): Database data to inform the chatbot
+            history (list): Chat history for context
+            context (str): Additional context for the chatbot
+            error_reason (str): The reason for falling back to Gemini
+            
+        Returns:
+            str: Chatbot response
+        """
+        print(f"Using Gemini fallback due to OpenAI error: {error_reason}")
+        
+        if not self.gemini_available:
+            return (
+                f"I'm currently experiencing issues with my primary AI service ({error_reason}). "
+                "Unfortunately, the backup service is also not available. "
+                "Please try again in a few minutes or contact support if this persists."
+            )
+        
+        try:
+            # Attempt to use Gemini as a fallback
+            response = self.gemini_client.get_chatbot_response(prompt, database_data, history, context)
+            return f"{response}\n\n(Answered using backup AI service due to high demand on primary service)"
+        except Exception as e:
+            print(f"Gemini fallback error: {e}")
+            return (
+                f"I'm currently experiencing issues with both my primary and backup AI services. "
+                "Please try again in a few minutes or contact support if this persists."
+            )
