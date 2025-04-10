@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Project Management Chatbot{% endblock %}</title>
+    <title>{% block title %}Database Chatbot{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -654,7 +654,7 @@
     <nav class="navbar navbar-expand-lg">
         <div class="container">
             <a class="navbar-brand" href="{% url 'chatbot:index' %}">
-                <i class="fas fa-robot me-2"></i>Project Management Chatbot
+                <i class="fas fa-robot me-2"></i>Database Chatbot
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -664,17 +664,6 @@
                     {% if user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'chatbot:index' %}"><i class="fas fa-comments me-1"></i>Chat</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'chatbot:projects' %}"><i class="fas fa-list me-1"></i>Projects</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'chatbot:dashboard_overview' %}">
-                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'chatbot:budget_analysis' %}"><i class="fas fa-chart-bar me-1"></i>Budget Analysis</a>
                     </li>
                     <li class="nav-item">
                         <div class="theme-toggle" id="theme-toggle" title="Toggle Dark Mode">
@@ -726,7 +715,7 @@
         <div class="container">
             <div class="row">
                 <div class="col-12">
-                    <p class="mb-0">&copy; {% now "Y" %} Project Management Chatbot | Powered by OpenAI</p>
+                    <p class="mb-0">&copy; {% now "Y" %} Database Chatbot | Powered by OpenAI</p>
                 </div>
             </div>
         </div>

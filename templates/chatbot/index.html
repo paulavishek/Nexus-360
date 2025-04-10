@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Project Management Chatbot{% endblock %}
+{% block title %}Database Chatbot{% endblock %}
 
 {% block extra_css %}
 <!-- Include the enhanced CSS styles -->
@@ -385,18 +385,18 @@
 <div class="row justify-content-center">
     <div class="col-md-10 col-lg-8">
         <div class="welcome-message">
-            <h2 class="app-title">Project Management Assistant</h2>
-            <p class="text-muted">Ask me anything about your projects, team members, or budget information!</p>
+            <h2 class="app-title">Database Assistant</h2>
+            <p class="text-muted">Ask me anything about your database or any general questions!</p>
             
             {% if sheet_names|length > 1 %}
             <div class="sheet-selector mb-3">
                 <select class="form-select" id="sheet-selector">
-                    <option value="">All Project Sheets</option>
+                    <option value="">All Data Sources</option>
                     {% for name in sheet_names %}
                         <option value="{{ name }}">{{ name|title }}</option>
                     {% endfor %}
                 </select>
-                <div class="form-text text-center">Select a specific sheet or query across all sheets</div>
+                <div class="form-text text-center">Select a specific data source or query across all sources</div>
             </div>
             {% endif %}
             
@@ -418,9 +418,9 @@
                         <span>Assistant</span>
                         <span class="message-timestamp">Just now</span>
                     </div>
-                    <div>Hello! I'm your project management assistant. 
+                    <div>Hello! I'm your database assistant. 
                     {% if sheet_names|length > 1 %}
-                    I can answer questions about any of your project sheets. Use the dropdown above to focus on a specific sheet.
+                    I can answer questions about your database or any data sources. Use the dropdown above to focus on a specific source.
                     {% else %}
                     How can I help you today?
                     {% endif %}
@@ -517,7 +517,7 @@
         }
 
         // Function to add a new message to the chat
-        function addMessage(content, sender, source = null, sheetName = null, dashboardUrl = null) {
+        function addMessage(content, sender, source = null, sheetName = null) {
             const messageClass = sender === 'user' ? 'user-message' : 'bot-message';
             const senderName = sender === 'user' ? 'You' : 'Assistant';
             const timestamp = getCurrentTimestamp();
@@ -542,21 +542,10 @@
                     }
                 }
                 if (sheetName) {
-                    sourceInfo += ` <span class="badge bg-secondary sheet-badge">Sheet: ${sheetName}</span>`;
+                    sourceInfo += ` <span class="badge bg-secondary sheet-badge">Source: ${sheetName}</span>`;
                 }
                 if (sourceInfo) {
                     messageHTML += `<div class="message-source">${sourceInfo}</div>`;
-                }
-                
-                // Add dashboard button if available
-                if (dashboardUrl) {
-                    messageHTML += `
-                        <div class="mt-3">
-                            <a href="${dashboardUrl}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-tachometer-alt me-1"></i>View Dashboard
-                            </a>
-                        </div>
-                    `;
                 }
 
                 // Add message actions for bot messages
@@ -631,8 +620,7 @@
                         data.response, 
                         'bot', 
                         data.source, 
-                        data.sheet_name, 
-                        data.dashboard_url
+                        data.sheet_name
                     );
                 },
                 error: function (xhr, status, error) {
@@ -665,8 +653,8 @@
         sheetSelector.on('change', function () {
             const selectedSheet = $(this).val();
             const message = selectedSheet
-                ? `Now focusing on the "${selectedSheet}" project sheet.`
-                : "Now considering all project sheets.";
+                ? `Now focusing on the "${selectedSheet}" data source.`
+                : "Now considering all data sources.";
 
             addMessage(message, 'bot', 'System');
         });
