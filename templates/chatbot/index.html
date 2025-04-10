@@ -378,6 +378,48 @@
         max-height: 60vh;
     }
 }
+
+/* Refresh data button styling */
+.refresh-data-btn {
+    margin-left: 10px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+    background-color: #4fc3a1;
+    border-color: #4fc3a1;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.refresh-data-btn:hover {
+    background-color: #3aa889;
+    border-color: #3aa889;
+    transform: translateY(-2px);
+}
+
+.refresh-data-btn .spinner-border {
+    height: 1rem;
+    width: 1rem;
+    margin-right: 0.25rem;
+    display: none;
+}
+
+@keyframes rotateAnimation {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.refresh-icon {
+    margin-right: 0.25rem;
+    transition: transform 0.3s ease;
+}
+
+.refresh-data-btn:hover .refresh-icon {
+    animation: rotateAnimation 1s linear infinite;
+}
 </style>
 {% endblock %}
 
@@ -388,23 +430,30 @@
             <h2 class="app-title">Database Assistant</h2>
             <p class="text-muted">Ask me anything about your database or any general questions!</p>
             
-            {% if sheet_names|length > 1 %}
-            <div class="sheet-selector mb-3">
-                <select class="form-select" id="sheet-selector">
-                    <option value="">All Data Sources</option>
-                    {% for name in sheet_names %}
-                        <option value="{{ name }}">{{ name|title }}</option>
-                    {% endfor %}
-                </select>
-                <div class="form-text text-center">Select a specific data source or query across all sources</div>
-            </div>
-            {% endif %}
-            
-            <!-- Add View Starred button -->
-            <div class="text-end mt-3">
-                <button id="view-starred" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-star me-1"></i>View Starred
-                </button>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                {% if sheet_names|length > 1 %}
+                <div class="sheet-selector">
+                    <select class="form-select" id="sheet-selector">
+                        <option value="">All Data Sources</option>
+                        {% for name in sheet_names %}
+                            <option value="{{ name }}">{{ name|title }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Select a specific data source or query across all sources</div>
+                </div>
+                {% endif %}
+                
+                <div class="action-buttons">
+                    <!-- Add refresh data button -->
+                    <button id="refresh-data" class="btn btn-sm refresh-data-btn" title="Refresh database data">
+                        <span class="spinner-border" role="status" id="refresh-spinner"></span>
+                        <i class="fas fa-sync-alt refresh-icon"></i> Refresh Data
+                    </button>
+                    
+                    <button id="view-starred" class="btn btn-sm btn-outline-primary ms-2">
+                        <i class="fas fa-star me-1"></i>View Starred
+                    </button>
+                </div>
             </div>
         </div>
         
@@ -472,7 +521,10 @@
         const sheetSelector = $('#sheet-selector');
         const exportBtn = $('#export-chat');
         const viewStarredBtn = $('#view-starred');
+        const refreshDataBtn = $('#refresh-data');
+        const refreshSpinner = $('#refresh-spinner');
         let chatHistory = [];
+        let refreshDataMode = false; // Track if the next request should bypass cache
 
         // Function to get CSRF token from cookies
         function getCookie(name) {
@@ -605,13 +657,17 @@
                 data: JSON.stringify({
                     message: message,
                     history: chatHistory,
-                    sheet_name: selectedSheet
+                    sheet_name: selectedSheet,
+                    refresh_data: refreshDataMode // Include refresh_data parameter
                 }),
                 beforeSend: function (xhr) {
                     // Add the CSRF token to the request header
                     xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
                 },
                 success: function (data) {
+                    // Reset refresh data mode after use
+                    refreshDataMode = false;
+                    
                     // Hide typing indicator
                     typingIndicator.hide();
 
@@ -624,6 +680,9 @@
                     );
                 },
                 error: function (xhr, status, error) {
+                    // Reset refresh data mode after use
+                    refreshDataMode = false;
+                    
                     // Hide typing indicator
                     typingIndicator.hide();
 
@@ -638,6 +697,44 @@
                 }
             });
         }
+
+        // Handle refresh data button click
+        refreshDataBtn.on('click', function() {
+            // Show spinner
+            refreshSpinner.show();
+            $(this).prop('disabled', true);
+            
+            // Call the refresh endpoint
+            $.ajax({
+                type: 'GET',
+                url: '/refresh-data/',
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+                },
+                success: function(data) {
+                    // Add system message about refresh
+                    addMessage(data.message, 'bot', 'System');
+                    
+                    // Set flag to bypass cache on next request
+                    refreshDataMode = true;
+                },
+                error: function(xhr, status, error) {
+                    // Add error message
+                    let errorMessage = "Sorry, I couldn't refresh the database data.";
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage += " Details: " + xhr.responseJSON.message;
+                    }
+                    addMessage(errorMessage, 'bot', 'Error');
+                    
+                    console.error("Refresh Error:", status, error);
+                },
+                complete: function() {
+                    // Hide spinner and re-enable button
+                    refreshSpinner.hide();
+                    refreshDataBtn.prop('disabled', false);
+                }
+            });
+        });
 
         // Send button click handler
         sendBtn.on('click', sendMessage);

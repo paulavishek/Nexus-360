@@ -10,22 +10,39 @@ class ChatbotService:
         self.openai_client = OpenAIClient()
         self.sheets_client = GoogleSheetsClient()
         
-    def get_database_data(self):
+    def get_database_data(self, use_cache=True):
         """
         Fetch data from the database (Google Sheets in this implementation)
         
+        Args:
+            use_cache (bool): Whether to use cached data if available. Set to False to force a fresh fetch.
+            
         Returns:
             dict: Database data that can be used for chatbot context
         """
         try:
             # Get all available data that might be relevant for answering queries
-            data = self.sheets_client.get_all_data()
+            data = self.sheets_client.get_all_data(use_cache=use_cache)
             return data
         except Exception as e:
             print(f"Error fetching database data: {e}")
             return None
+            
+    def clear_cache(self):
+        """
+        Clear the database cache to ensure fresh data is fetched next time
+        
+        Returns:
+            bool: True if cache was successfully cleared, False otherwise
+        """
+        try:
+            self.sheets_client.clear_cache()
+            return True
+        except Exception as e:
+            print(f"Error clearing cache: {e}")
+            return False
 
-    def get_response(self, prompt, context=None, history=None):
+    def get_response(self, prompt, context=None, history=None, use_cache=True):
         """
         Get chatbot response
         
@@ -33,13 +50,14 @@ class ChatbotService:
             prompt (str): User query
             context (dict, optional): Additional context for the chatbot
             history (list): Chat history for context
+            use_cache (bool): Whether to use cached data. Set to False to force a fresh data fetch.
             
         Returns:
             dict: Response with source information
         """
         # Get database data to provide context for the chatbot
         try:
-            database_data = self.get_database_data()
+            database_data = self.get_database_data(use_cache=use_cache)
         except Exception as e:
             print(f"Error fetching database data: {e}")
             database_data = None

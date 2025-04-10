@@ -15,7 +15,13 @@ def index(request):
     """
     View for the chatbot interface with CSRF protection
     """
-    return render(request, 'chatbot/index.html')
+    # Create a chatbot service to get available sheet names
+    chatbot = ChatbotService()
+    sheet_names = chatbot.sheets_client.get_available_sheet_names()
+    
+    return render(request, 'chatbot/index.html', {
+        'sheet_names': sheet_names
+    })
 
 @login_required(login_url='chatbot:login')
 @require_POST
@@ -28,6 +34,7 @@ def chat(request):
         data = json.loads(request.body)
         message = data.get('message', '')
         history = data.get('history', [])
+        refresh_data = data.get('refresh_data', False)  # Option to bypass cache
         
         # Validate inputs
         if not message or len(message.strip()) == 0:
@@ -41,7 +48,7 @@ def chat(request):
         
         # Get response from chatbot service
         chatbot = ChatbotService()
-        response = chatbot.get_response(message, None, history)
+        response = chatbot.get_response(message, None, history, use_cache=not refresh_data)
         
         return JsonResponse({
             'response': response['response'],
@@ -57,6 +64,31 @@ def chat(request):
         }, status=500)
     
     return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+@login_required(login_url='chatbot:login')
+def refresh_data(request):
+    """
+    API endpoint to refresh the database cache
+    """
+    try:
+        chatbot = ChatbotService()
+        success = chatbot.clear_cache()
+        
+        if success:
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Database cache refreshed successfully. New data is now available.'
+            })
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Failed to refresh database cache.'
+            }, status=500)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error refreshing database cache: {str(e)}'
+        }, status=500)
 
 def login_view(request):
     """
