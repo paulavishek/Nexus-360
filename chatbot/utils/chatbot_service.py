@@ -1,5 +1,6 @@
 import time
 from .openai_client import OpenAIClient
+from .gemini_client import GeminiClient
 from .google_sheets import GoogleSheetsClient
 
 class ChatbotService:
@@ -7,6 +8,8 @@ class ChatbotService:
     Main service for the chatbot with database integration
     """
     def __init__(self):
+        # Use Gemini as primary model and OpenAI as fallback (reversed from before)
+        self.gemini_client = GeminiClient()
         self.openai_client = OpenAIClient()
         self.sheets_client = GoogleSheetsClient()
         
@@ -74,37 +77,31 @@ class ChatbotService:
             context_text += f"{context}\n"
             
         try:
-            # The enhanced OpenAI client now handles retries and rate limits internally
-            response = self.openai_client.get_chatbot_response(prompt, database_data, history, context_text)
-            
-            # Check if response is from a fallback mechanism (for better UI feedback)
-            if "currently experiencing high demand" in response or "I encountered an error" in response:
-                return {
-                    'response': response,
-                    'source': 'fallback',
-                    'error': "Rate limit or API error"
-                }
+            # Use Gemini as the primary model now
+            response = self.gemini_client.get_chatbot_response(prompt, database_data, history, context_text)
             
             return {
                 'response': response,
-                'source': 'openai',
+                'source': 'gemini',  # Changed from 'openai' to 'gemini'
                 'error': None
             }
         except Exception as e:
             error_message = str(e)
-            print(f"OpenAI client error: {e}")
+            print(f"Gemini client error: {e}")
             
-            # Check if this is an API key or configuration error
-            if "API key" in error_message or "configuration" in error_message or "not configured" in error_message:
+            # Fall back to OpenAI if Gemini fails
+            try:
+                print("Using OpenAI fallback due to Gemini error:", error_message)
+                fallback_response = self.openai_client.get_chatbot_response(prompt, database_data, history, context_text)
                 return {
-                    'response': "The OpenAI service is not properly configured. Please contact the administrator to set up the API key correctly.",
-                    'source': 'error',
-                    'error': error_message
+                    'response': fallback_response,
+                    'source': 'openai-fallback',  # Mark this as the fallback model
+                    'error': None
                 }
-            
-            # Handle other errors
-            return {
-                'response': "I'm sorry, I'm having trouble connecting to the AI service right now. Please try again later.",
-                'source': 'error',
-                'error': error_message
-            }
+            except Exception as openai_error:
+                print(f"OpenAI fallback error: {openai_error}")
+                return {
+                    'response': f"I'm sorry, I'm having trouble connecting to my AI services right now. Please try again later.",
+                    'source': 'error',
+                    'error': f"Primary error: {error_message}, Fallback error: {str(openai_error)}"
+                }
