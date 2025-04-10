@@ -62,8 +62,39 @@ class GeminiClient:
                 # Adding clear instruction about general knowledge
                 system_message += "\n\nIMPORTANT: If the user asks a question that's not related to this database data, you should still answer it using your general knowledge. Don't refuse to answer just because the information isn't in the database."
             
-            # Configure the model - using the latest available Gemini model name
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            # Configure the model with parameters similar to OpenAI for consistency
+            generation_config = {
+                "temperature": 0.3,  # Lower temperature for more precise answers, matching OpenAI
+                "max_output_tokens": 500,  # Matching the max_tokens we set for OpenAI
+                "top_p": 0.95,  # Controls diversity
+                "top_k": 40  # Limits vocabulary selections
+            }
+            
+            safety_settings = [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                }
+            ]
+            
+            # Configure the model - using the latest available Gemini model name with parameters
+            model = genai.GenerativeModel(
+                model_name='gemini-1.5-flash',
+                generation_config=generation_config,
+                safety_settings=safety_settings
+            )
             
             # Format chat history for Gemini
             chat_session = model.start_chat(history=[])
