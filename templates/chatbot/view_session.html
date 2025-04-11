@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}Chat Session - {{ session.get_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        height: 550px;
+        overflow-y: auto;
+        background-color: var(--chat-bg);
+        border-radius: var(--border-radius-lg);
+        padding: 25px;
+        margin-bottom: 25px;
+        box-shadow: var(--shadow-soft);
+        scrollbar-width: thin;
+        scrollbar-color: var(--secondary-color) transparent;
+    }
+
+    .chat-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .chat-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .chat-container::-webkit-scrollbar-thumb {
+        background-color: rgba(22, 96, 136, 0.3);
+        border-radius: 20px;
+    }
+
+    .message {
+        margin-bottom: 18px;
+        padding: 12px 18px;
+        border-radius: var(--border-radius-lg);
+        max-width: 80%;
+        word-wrap: break-word;
+        position: relative;
+        transition: var(--transition-smooth);
+        box-shadow: var(--shadow-soft);
+        line-height: 1.5;
+    }
+
+    .message:hover {
+        box-shadow: var(--shadow-medium);
+    }
+
+    .message-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+        font-size: 0.8rem;
+        opacity: 0.7;
+    }
+
+    .user-message {
+        background-color: var(--message-bubble-user);
+        color: var(--message-text-user);
+        margin-left: auto;
+        border-bottom-right-radius: 5px;
+    }
+
+    .bot-message {
+        background-color: var(--message-bubble-bot);
+        color: var(--message-text-bot);
+        margin-right: auto;
+        border-bottom-left-radius: 5px;
+    }
+
+    .message-timestamp {
+        font-size: 0.75rem;
+        opacity: 0.8;
+    }
+
+    .message-source {
+        font-size: 11px;
+        font-weight: 500;
+        margin-top: 6px;
+        text-align: right;
+        opacity: 0.8;
+    }
+
+    .bot-message .message-source {
+        color: #6c757d;
+    }
+
+    .user-message .message-source {
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .model-badge {
+        font-size: 0.75rem;
+        padding: 0.15rem 0.4rem;
+        border-radius: 0.2rem;
+        margin-left: 0.5rem;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+    }
+
+    .model-badge.gemini {
+        background-color: #4285f4;
+        color: white;
+    }
+
+    .model-badge.openai {
+        background-color: #10a37f;
+        color: white;
+    }
+
+    .model-badge.fallback {
+        background-color: #f4b400;
+        color: #333;
+    }
+
+    .bot-message pre {
+        background-color: rgba(0, 0, 0, 0.05);
+        padding: 12px;
+        border-radius: 8px;
+        margin: 10px 0;
+        overflow-x: auto;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .bot-message code {
+        font-family: 'Courier New', monospace;
+        background-color: rgba(0, 0, 0, 0.05);
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-size: 90%;
+        color: #d63384;
+    }
+
+    .session-info {
+        padding: 15px;
+        background-color: var(--card-bg);
+        border-radius: var(--border-radius-md);
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-soft);
+    }
+
+    .session-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
+        color: var(--muted-text);
+    }
+
+    .session-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .export-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        z-index: 10;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--message-bubble-bot);
+        color: var(--dark-text);
+        border: none;
+        box-shadow: var(--shadow-medium);
+        transition: all 0.2s ease;
+    }
+
+    .export-btn:hover {
+        transform: scale(1.1);
+        background-color: var(--accent-color);
+        color: white;
+    }
+    
+    .chat-container-wrapper {
+        position: relative;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="mb-3">Chat Session</h2>
+        <p class="text-muted">Viewing conversation details</p>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <a href="{% url 'chatbot:index' %}" class="btn btn-primary">
+            <i class="fas fa-comments me-2"></i>Back to Chat
+        </a>
+        <a href="{% url 'chatbot:chat_history' %}" class="btn btn-outline-primary ms-2">
+            <i class="fas fa-history me-2"></i>Chat History
+        </a>
+    </div>
+</div>
+
+<div class="session-info">
+    <div class="session-meta">
+        <div>
+            <strong>Session:</strong> {{ session.get_title }}
+            <span class="ms-3"><i class="far fa-calendar-alt me-1"></i> {{ session.created_at|date:"F j, Y" }}</span>
+            <span class="ms-3"><i class="far fa-clock me-1"></i> {{ session.created_at|time:"H:i" }}</span>
+            <span class="ms-3"><i class="far fa-comments me-1"></i> {{ chat_messages.count }} messages</span>
+        </div>
+        <div class="session-actions">
+            <form method="post" action="{% url 'chatbot:chat_history' %}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this chat session?');">
+                {% csrf_token %}
+                <input type="hidden" name="delete_session" value="{{ session.id }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-trash-alt"></i> Delete
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="chat-container-wrapper">
+    <button class="export-btn" id="export-chat" title="Export Conversation">
+        <i class="fas fa-download"></i>
+    </button>
+    <div class="chat-container" id="chat-container">
+        {% for message in chat_messages %}
+        <div class="{% if message.role == 'user' %}user-message{% else %}bot-message{% endif %} message">
+            <div class="message-header">
+                <span>{% if message.role == 'user' %}You{% else %}Assistant{% endif %}</span>
+                <span class="message-timestamp">{{ message.timestamp|time:"H:i" }}</span>
+            </div>
+            <div>{{ message.content|linebreaks }}</div>
+            {% if message.role == 'assistant' and message.model %}
+            <div class="message-source">
+                {% if 'gemini' in message.model %}
+                <i class="fas fa-robot me-1"></i> Google Gemini 1.5-Flash <span class="model-badge gemini">Gemini</span>
+                {% elif 'openai' in message.model %}
+                <i class="fas fa-robot me-1"></i> OpenAI GPT-4o-mini <span class="model-badge openai">GPT</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Export chat functionality
+        document.getElementById('export-chat').addEventListener('click', function() {
+            const chatMessages = JSON.parse('{{ chat_messages|safe|escapejs }}');
+            const conversationText = chatMessages.map(message => {
+                const sender = message.role === 'user' ? 'You' : 'Assistant';
+                const timestamp = message.timestamp;
+                const content = message.content;
+                return `[${timestamp}] ${sender}: ${content}`;
+            });
+
+            const exportText = conversationText.join('\n\n');
+            const blob = new Blob([exportText], {type: "text/plain;charset=utf-8"});
+            
+            // Create a link element to download the file
+            const a = document.createElement("a");
+            const date = new Date().toISOString().slice(0,10);
+            a.href = URL.createObjectURL(blob);
+            a.download = `chat_export_${date}.txt`;
+            a.style.display = "none";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+        
+        // Scroll to bottom of chat container
+        const chatContainer = document.getElementById('chat-container');
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    });
+</script>
+{% endblock %}

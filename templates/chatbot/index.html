@@ -480,6 +480,112 @@
     background-color: #f4b400;
     color: #333;
 }
+
+/* New styles for the additional features */
+.model-selector {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+    background-color: var(--card-bg);
+    transition: var(--transition-smooth);
+}
+
+.model-option {
+    flex: 1;
+    text-align: center;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+    position: relative;
+}
+
+.model-option.active {
+    background-color: var(--primary-color);
+    color: white;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+.model-option:not(.active):hover {
+    background-color: rgba(74, 111, 165, 0.1);
+}
+
+.model-option.gemini {
+    border-right: 1px solid var(--border-color);
+}
+
+.model-option .model-icon {
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+}
+
+.model-option .model-indicator {
+    position: absolute;
+    top: 0.3rem;
+    right: 0.3rem;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background-color: var(--accent-color);
+    display: none;
+}
+
+.model-option.active .model-indicator {
+    display: block;
+}
+
+.session-selector {
+    margin-bottom: 1.5rem;
+}
+
+.session-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.session-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius-sm);
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.session-item:hover {
+    background-color: rgba(74, 111, 165, 0.1);
+}
+
+.session-item.active {
+    background-color: rgba(74, 111, 165, 0.2);
+    font-weight: 500;
+}
+
+.session-item-icon {
+    margin-right: 0.75rem;
+    opacity: 0.7;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.toolbar-section {
+    display: flex;
+    align-items: center;
+}
+
+.dashboard-link {
+    margin-left: 1rem;
+}
 </style>
 {% endblock %}
 
@@ -489,36 +595,100 @@
         <div class="welcome-message">
             <h2 class="app-title">Database Assistant</h2>
             <p class="text-muted">Ask me anything about your database or any general questions!</p>
-            
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                {% if sheet_names|length > 1 %}
-                <div class="sheet-selector">
-                    <select class="form-select" id="sheet-selector">
-                        <option value="">All Data Sources</option>
-                        {% for name in sheet_names %}
-                            <option value="{{ name }}">{{ name|title }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="form-text">Select a specific data source or query across all sources</div>
+        </div>
+        
+        <!-- New toolbar with model selector and other options -->
+        <div class="toolbar mb-4">
+            <div class="toolbar-section">
+                <!-- Model Selection Toggle -->
+                <div class="model-selector">
+                    <div class="model-option gemini active" data-model="gemini" id="gemini-option">
+                        <i class="fas fa-robot model-icon"></i> Gemini
+                        <span class="model-indicator"></span>
+                    </div>
+                    <div class="model-option openai" data-model="openai" id="openai-option">
+                        <i class="fas fa-brain model-icon"></i> OpenAI
+                        <span class="model-indicator"></span>
+                    </div>
                 </div>
-                {% endif %}
                 
-                <div class="action-buttons">
-                    <!-- Add refresh data button -->
-                    <button id="refresh-data" class="btn btn-sm refresh-data-btn" title="Refresh database data">
-                        <span class="spinner-border" role="status" id="refresh-spinner"></span>
-                        <i class="fas fa-sync-alt refresh-icon"></i> Refresh Data
-                    </button>
-                    
-                    <button id="view-starred" class="btn btn-sm btn-outline-primary ms-2">
-                        <i class="fas fa-star me-1"></i>View Starred
-                    </button>
-                    
-                    <!-- Add Reset History button -->
-                    <button id="reset-history" class="btn btn-sm btn-outline-danger ms-2">
-                        <i class="fas fa-trash-alt me-1"></i>Reset History
-                    </button>
+                <div class="dashboard-link">
+                    <a href="{% url 'chatbot:dashboard' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-chart-line me-1"></i> Dashboard
+                    </a>
                 </div>
+            </div>
+            
+            <div class="toolbar-section">
+                <!-- Session Control -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="sessionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-history me-1"></i> Chat Sessions
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end session-list" aria-labelledby="sessionDropdown">
+                        <li><h6 class="dropdown-header">Current Session</h6></li>
+                        <li>
+                            <a class="dropdown-item session-item active" href="#" data-session-id="{{ active_session_id }}">
+                                <i class="fas fa-comments session-item-icon"></i> Current Chat
+                            </a>
+                        </li>
+                        
+                        {% if previous_sessions %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Previous Sessions</h6></li>
+                            {% for session in previous_sessions %}
+                                <li>
+                                    <a class="dropdown-item session-item" href="#" data-session-id="{{ session.id }}">
+                                        <i class="far fa-comments session-item-icon"></i> {{ session.get_title|truncatechars:25 }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="#" id="new-session-btn">
+                                <i class="fas fa-plus me-1"></i> New Session
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'chatbot:chat_history' %}">
+                                <i class="fas fa-folder-open me-1"></i> All Chat History
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            {% if sheet_names|length > 1 %}
+            <div class="sheet-selector">
+                <select class="form-select" id="sheet-selector">
+                    <option value="">All Data Sources</option>
+                    {% for name in sheet_names %}
+                        <option value="{{ name }}">{{ name|title }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Select a specific data source or query across all sources</div>
+            </div>
+            {% endif %}
+            
+            <div class="action-buttons">
+                <!-- Add refresh data button -->
+                <button id="refresh-data" class="btn btn-sm refresh-data-btn" title="Refresh database data">
+                    <span class="spinner-border" role="status" id="refresh-spinner"></span>
+                    <i class="fas fa-sync-alt refresh-icon"></i> Refresh Data
+                </button>
+                
+                <button id="view-starred" class="btn btn-sm btn-outline-primary ms-2">
+                    <i class="fas fa-star me-1"></i>View Starred
+                </button>
+                
+                <!-- Add Reset History button -->
+                <button id="reset-history" class="btn btn-sm btn-outline-danger ms-2">
+                    <i class="fas fa-trash-alt me-1"></i>Reset History
+                </button>
             </div>
         </div>
         
@@ -570,7 +740,8 @@
         
         <p class="text-center text-muted small mt-3">
             <i class="fas fa-info-circle me-1"></i> 
-            This chatbot uses Google Gemini 1.5-Flash
+            Using <span id="current-model">Google Gemini 1.5-Flash</span> | 
+            <a href="{% url 'chatbot:dashboard' %}" class="text-muted">View Analytics</a>
         </p>
     </div>
 </div>
@@ -589,16 +760,79 @@
         const refreshDataBtn = $('#refresh-data');
         const refreshSpinner = $('#refresh-spinner');
         const resetHistoryBtn = $('#reset-history');
-        let chatHistory = [];
-        let refreshDataMode = false; // Track if the next request should bypass cache
-        let isRetrying = false; // Track if we're in retry mode
-        let lastUserMessage = ''; // Store the last user message for retry
-        let retryWaitTime = 0; // Wait time for rate limit retries
-        let retryCountdown; // For the countdown timer
+        const currentModelText = $('#current-model');
         
-        // Initialize by loading saved chat history
-        initializeChatHistory();
-
+        // WebSocket setup
+        let chatSocket = null;
+        let activeSessionId = "{{ active_session_id }}";
+        let selectedModel = "gemini"; // Default model
+        let chatHistory = [];
+        let refreshDataMode = false;
+        let isRetrying = false;
+        let lastUserMessage = '';
+        let retryWaitTime = 0;
+        let retryCountdown;
+        let messageQueue = []; // Queue for messages to be processed
+        let processingMessage = false; // Flag to check if currently processing a message
+        
+        // Initialize WebSocket connection
+        function connectWebSocket() {
+            // Generate a unique room name based on the user's session ID
+            const roomName = 'user_{{ request.user.id }}_' + activeSessionId;
+            
+            // Close existing connection if any
+            if (chatSocket) {
+                chatSocket.close();
+            }
+            
+            // Create new WebSocket connection
+            const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+            const wsUrl = `${wsScheme}://${window.location.host}/ws/chat/${roomName}/`;
+            
+            chatSocket = new WebSocket(wsUrl);
+            
+            chatSocket.onopen = function(e) {
+                console.log('WebSocket connection established');
+            };
+            
+            chatSocket.onclose = function(e) {
+                console.log('WebSocket connection closed. Reconnecting...');
+                // Try to reconnect after 1 second
+                setTimeout(connectWebSocket, 1000);
+            };
+            
+            chatSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                
+                if (data.type === 'typing') {
+                    // Show/hide typing indicator
+                    if (data.status === 'typing') {
+                        typingIndicator.show();
+                    } else {
+                        typingIndicator.hide();
+                    }
+                }
+                else if (data.type === 'message') {
+                    // Hide typing indicator
+                    typingIndicator.hide();
+                    
+                    // Add the message to the chat
+                    if (data.sender === 'assistant') {
+                        addMessage(data.message, 'bot', data.source, data.sheet_name);
+                    }
+                }
+            };
+            
+            chatSocket.onerror = function(e) {
+                console.error('WebSocket error:', e);
+                // Fall back to AJAX if WebSocket fails
+                console.log('Falling back to AJAX for communication');
+            };
+        }
+        
+        // Connect WebSocket on page load
+        connectWebSocket();
+        
         // Function to get CSRF token from cookies
         function getCookie(name) {
             let cookieValue = null;
@@ -730,6 +964,85 @@
         // Function to restore chat history from localStorage
         function restoreChatHistory() {
             try {
+                // Get saved messages from database instead of localStorage
+                $.ajax({
+                    type: 'GET',
+                    url: `/session/${activeSessionId}/messages/`,
+                    success: function(data) {
+                        if (data.messages && data.messages.length > 0) {
+                            // Clear initial welcome message
+                            chatContainer.empty();
+                            
+                            // Add typing indicator back
+                            chatContainer.append('<div class="typing-indicator" id="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>');
+                            typingIndicator = $('#typing-indicator');
+                            
+                            // Add all messages to the chat
+                            data.messages.forEach(msg => {
+                                const isBot = msg.role === 'assistant';
+                                const messageClass = isBot ? 'bot-message' : 'user-message';
+                                const senderName = isBot ? 'Assistant' : 'You';
+                                const timestamp = new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                                
+                                let messageHTML = `<div class="${messageClass} message">`;
+                                messageHTML += `<div class="message-header">
+                                            <span>${senderName}</span>
+                                            <span class="message-timestamp">${timestamp}</span>
+                                        </div>`;
+                                messageHTML += `<div>${isBot ? formatMessage(msg.content) : msg.content}</div>`;
+                                
+                                if (isBot && msg.model) {
+                                    const modelInfo = getModelInfo(msg.model);
+                                    messageHTML += `<div class="message-source">${modelInfo.icon} ${modelInfo.name}${modelInfo.badge}</div>`;
+                                    
+                                    // Add message actions for bot messages
+                                    messageHTML += `
+                                        <div class="message-actions">
+                                            <button class="message-action-btn copy-btn" title="Copy to clipboard">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                            <button class="message-action-btn star-btn" title="Star this conversation">
+                                                <i class="fas fa-star-half-alt"></i>
+                                            </button>
+                                        </div>
+                                    `;
+                                }
+                                
+                                messageHTML += `</div>`;
+                                typingIndicator.before(messageHTML);
+                                
+                                // Add to chat history array
+                                chatHistory.push({
+                                    role: msg.role,
+                                    content: msg.content
+                                });
+                            });
+                            
+                            // Restore starred messages
+                            restoreStarredMessages();
+                            
+                            // Scroll to bottom
+                            setTimeout(() => {
+                                chatContainer.scrollTop(chatContainer.prop('scrollHeight'));
+                            }, 100);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error loading chat history:", error);
+                        // Fall back to localStorage if server fails
+                        restoreLocalHistory();
+                    }
+                });
+            } catch (e) {
+                console.error('Error restoring chat history:', e);
+                // Fall back to localStorage
+                restoreLocalHistory();
+            }
+        }
+        
+        // Fallback to localStorage for history
+        function restoreLocalHistory() {
+            try {
                 const savedMessages = JSON.parse(localStorage.getItem('pmChatbot_chatHistory'));
                 if (savedMessages && savedMessages.length > 0) {
                     // Clear initial welcome message if we have saved history
@@ -821,10 +1134,10 @@
         
         // Initialize chat history
         function initializeChatHistory() {
-            // Restore chat from localStorage
+            // Restore chat from database
             restoreChatHistory();
             
-            // Keep chat history in sync with localStorage
+            // Keep chat history in sync
             const observer = new MutationObserver(function(mutations) {
                 // When chat content changes, save it
                 saveChatHistory();
@@ -966,60 +1279,203 @@
 
             // Show typing indicator
             typingIndicator.show();
+            
+            // Generate a unique message ID
+            const messageId = 'msg_' + new Date().getTime();
+            
+            // Check if WebSocket is connected
+            if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+                // Use WebSocket for real-time communication
+                chatSocket.send(JSON.stringify({
+                    'message': message,
+                    'history': chatHistory,
+                    'model': selectedModel,
+                    'sheet_name': selectedSheet,
+                    'refresh_data': refreshDataMode,
+                    'message_id': messageId,
+                    'session_id': activeSessionId
+                }));
+            } else {
+                // Fall back to AJAX if WebSocket is not available
+                $.ajax({
+                    type: 'POST',
+                    url: '/chat/',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        message: message,
+                        history: chatHistory,
+                        model: selectedModel,
+                        sheet_name: selectedSheet,
+                        refresh_data: refreshDataMode,
+                        session_id: activeSessionId
+                    }),
+                    beforeSend: function (xhr) {
+                        // Add the CSRF token to the request header
+                        xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+                    },
+                    success: function (data) {
+                        // Reset refresh data mode after use
+                        refreshDataMode = false;
+                        
+                        // Hide typing indicator
+                        typingIndicator.hide();
 
-            $.ajax({
-                type: 'POST',
-                url: '/chat/',
-                contentType: 'application/json',
-                data: JSON.stringify({
-                    message: message,
-                    history: chatHistory,
-                    sheet_name: selectedSheet,
-                    refresh_data: refreshDataMode // Include refresh_data parameter
-                }),
-                beforeSend: function (xhr) {
-                    // Add the CSRF token to the request header
-                    xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
-                },
-                success: function (data) {
-                    // Reset refresh data mode after use
-                    refreshDataMode = false;
-                    
-                    // Hide typing indicator
-                    typingIndicator.hide();
+                        // Add bot response to chat
+                        addMessage(
+                            data.response, 
+                            'bot', 
+                            data.source, 
+                            data.sheet_name
+                        );
+                        
+                        // If this was a successful retry, increase wait time for future rate limits
+                        if (isRetry && data.source === 'openai') {
+                            retryWaitTime = Math.min(retryWaitTime * 2, 300); // Max 5 minutes
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        // Reset refresh data mode after use
+                        refreshDataMode = false;
+                        
+                        // Hide typing indicator
+                        typingIndicator.hide();
 
-                    // Add bot response to chat
-                    addMessage(
-                        data.response, 
-                        'bot', 
-                        data.source, 
-                        data.sheet_name
-                    );
-                    
-                    // If this was a successful retry, increase wait time for future rate limits
-                    if (isRetry && data.source === 'openai') {
-                        retryWaitTime = Math.min(retryWaitTime * 2, 300); // Max 5 minutes
+                        // Show error message
+                        let errorMessage = "Sorry, I encountered an error processing your request.";
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMessage += " Details: " + xhr.responseJSON.error;
+                        }
+                        addMessage(errorMessage, 'bot', 'error');
+
+                        console.error("AJAX Error:", status, error);
                     }
-                },
-                error: function (xhr, status, error) {
-                    // Reset refresh data mode after use
-                    refreshDataMode = false;
-                    
-                    // Hide typing indicator
-                    typingIndicator.hide();
-
-                    // Show error message
-                    let errorMessage = "Sorry, I encountered an error processing your request.";
-                    if (xhr.responseJSON && xhr.responseJSON.error) {
-                        errorMessage += " Details: " + xhr.responseJSON.error;
-                    }
-                    addMessage(errorMessage, 'bot', 'error');
-
-                    console.error("AJAX Error:", status, error);
-                }
-            });
+                });
+            }
         }
 
+        // Handle model selection toggle
+        $('.model-option').on('click', function() {
+            // Remove active class from all options
+            $('.model-option').removeClass('active');
+            
+            // Add active class to clicked option
+            $(this).addClass('active');
+            
+            // Update selected model
+            selectedModel = $(this).data('model');
+            
+            // Update model text in the footer
+            if (selectedModel === 'gemini') {
+                currentModelText.text('Google Gemini 1.5-Flash');
+            } else {
+                currentModelText.text('OpenAI GPT-4o-mini');
+            }
+            
+            // Add a system message about the model change
+            addMessage(`Model switched to ${selectedModel === 'gemini' ? 'Google Gemini' : 'OpenAI'}.`, 'bot', 'System');
+        });
+        
+        // Handle session switching
+        $(document).on('click', '.session-item', function(e) {
+            e.preventDefault();
+            
+            const sessionId = $(this).data('session-id');
+            
+            if (sessionId === activeSessionId) {
+                // Already on this session
+                return;
+            }
+            
+            // Show loading state
+            chatContainer.html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3">Loading chat history...</p></div>');
+            
+            // Switch to the selected session
+            $.ajax({
+                type: 'POST',
+                url: '/switch-session/',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    session_id: sessionId
+                }),
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+                },
+                success: function(data) {
+                    // Update active session ID
+                    activeSessionId = data.session_id;
+                    
+                    // Update UI to show the session is active
+                    $('.session-item').removeClass('active');
+                    $(`.session-item[data-session-id="${sessionId}"]`).addClass('active');
+                    
+                    // Clear chat container
+                    chatContainer.empty();
+                    
+                    // Add typing indicator back
+                    chatContainer.append('<div class="typing-indicator" id="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>');
+                    typingIndicator = $('#typing-indicator');
+                    
+                    // Clear chat history
+                    chatHistory = [];
+                    
+                    // Add messages from the session
+                    if (data.messages && data.messages.length > 0) {
+                        data.messages.forEach(msg => {
+                            const isBot = msg.role === 'assistant';
+                            addMessage(
+                                msg.content,
+                                isBot ? 'bot' : 'user',
+                                isBot ? msg.model : null
+                            );
+                        });
+                    } else {
+                        // Add a welcome message if no messages
+                        addMessage('Starting a new conversation. How can I help you today?', 'bot', 'System');
+                    }
+                    
+                    // Reconnect WebSocket for the new session
+                    connectWebSocket();
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error switching session:", error);
+                    chatContainer.html(`<div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        Error loading chat session. Please try again.
+                    </div>`);
+                }
+            });
+        });
+        
+        // Handle creating a new session
+        $('#new-session-btn').on('click', function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            chatContainer.html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3">Creating new chat session...</p></div>');
+            
+            $.ajax({
+                type: 'POST',
+                url: '/create-session/',
+                beforeSend: function (xhr) {
+                    xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+                },
+                success: function(data) {
+                    // Update active session ID
+                    activeSessionId = data.session_id;
+                    
+                    // Reload the page to show the new session
+                    window.location.reload();
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error creating new session:", error);
+                    chatContainer.html(`<div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        Error creating new chat session. Please try again.
+                    </div>`);
+                }
+            });
+        });
+        
         // Handle retry button click
         $(document).on('click', '#retry-btn', function() {
             isRetrying = true;
@@ -1444,6 +1900,9 @@
         
         // Call restore starred messages when the page loads
         restoreStarredMessages();
+        
+        // Initialize chat history
+        initializeChatHistory();
         
         // Focus input on page load
         userInput.focus();

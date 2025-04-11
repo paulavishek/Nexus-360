@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-header {
+        margin-bottom: 2rem;
+    }
+    
+    .stats-card {
+        background-color: var(--card-bg);
+        border-radius: var(--border-radius-md);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: var(--shadow-soft);
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-medium);
+    }
+    
+    .stats-title {
+        color: var(--muted-text);
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .stats-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+    
+    .stats-icon {
+        font-size: 1.8rem;
+        color: var(--accent-color);
+        margin-right: 1rem;
+    }
+    
+    .chart-container {
+        background-color: var(--card-bg);
+        border-radius: var(--border-radius-md);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: var(--shadow-soft);
+        height: 350px;
+    }
+    
+    .sessions-list {
+        height: 350px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--secondary-color) transparent;
+    }
+    
+    .sessions-list::-webkit-scrollbar {
+        width: 4px;
+    }
+    
+    .sessions-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .sessions-list::-webkit-scrollbar-thumb {
+        background-color: rgba(22, 96, 136, 0.3);
+        border-radius: 20px;
+    }
+    
+    .session-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.2s;
+    }
+    
+    .session-item:hover {
+        background-color: rgba(74, 111, 165, 0.05);
+    }
+    
+    .session-title {
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 0.25rem;
+    }
+    
+    .session-meta {
+        font-size: 0.8rem;
+        color: var(--muted-text);
+        display: flex;
+        justify-content: space-between;
+    }
+    
+    .model-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    
+    .model-dot.gemini {
+        background-color: #4285F4;
+    }
+    
+    .model-dot.openai {
+        background-color: #10A37F;
+    }
+    
+    .model-dot.fallback {
+        background-color: #F4B400;
+    }
+    
+    .model-dot.other {
+        background-color: #9E9E9E;
+    }
+    
+    .chart-legend {
+        display: flex;
+        justify-content: center;
+        margin-top: 1rem;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin: 0 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1>Analytics Dashboard</h1>
+                <p class="text-muted">View insights about your chatbot usage</p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <a href="{% url 'chatbot:index' %}" class="btn btn-primary">
+                    <i class="fas fa-comments me-2"></i>Back to Chat
+                </a>
+                <a href="{% url 'chatbot:chat_history' %}" class="btn btn-outline-primary ms-2">
+                    <i class="fas fa-history me-2"></i>Chat History
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Total Messages Stat -->
+        <div class="col-md-4">
+            <div class="stats-card d-flex align-items-center">
+                <div class="stats-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <div>
+                    <div class="stats-title">Total Messages</div>
+                    <div class="stats-value">{{ total_messages }}</div>
+                    <small class="text-muted">Last 30 days</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Model Distribution Stat -->
+        <div class="col-md-4">
+            <div class="stats-card d-flex align-items-center">
+                <div class="stats-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div style="width: 100%;">
+                    <div class="stats-title">Model Distribution</div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <span class="model-dot gemini"></span>
+                            <span>Gemini</span>
+                        </div>
+                        <div class="d-flex align-items-center ms-3">
+                            <span class="model-dot openai"></span>
+                            <span>OpenAI</span>
+                        </div>
+                    </div>
+                    <div class="progress mt-2" style="height: 12px;">
+                        {% if model_data %}
+                            {% with gemini_count=0 openai_count=0 %}
+                                {% for i in model_data %}
+                                    {% if model_labels|index:forloop.counter0 == 'gemini' %}
+                                        {% with gemini_count=i %}{% endwith %}
+                                    {% elif model_labels|index:forloop.counter0 == 'openai' or model_labels|index:forloop.counter0 == 'openai-fallback' %}
+                                        {% with openai_count=i|add:openai_count %}{% endwith %}
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% with total=gemini_count|add:openai_count %}
+                                    {% if total > 0 %}
+                                        {% with gemini_percent=gemini_count|div:total|mul:100 %}
+                                        {% with openai_percent=openai_count|div:total|mul:100 %}
+                                        <div class="progress-bar bg-primary" role="progressbar" 
+                                            style="--gemini-width: {% widthratio gemini_count total 100 %}%; width: var(--gemini-width);"
+                                            aria-valuenow="{{ gemini_count }}" aria-valuemin="0" aria-valuemax="{{ total }}">
+                                            {{ gemini_count }}
+                                        </div>
+                                        <div class="progress-bar bg-success" role="progressbar" 
+                                            style="--openai-width: {% widthratio openai_count total 100 %}%; width: var(--openai-width);"
+                                            aria-valuenow="{{ openai_count }}" aria-valuemin="0" aria-valuemax="{{ total }}">
+                                            {{ openai_count }}
+                                        </div>
+                                        {% endwith %}
+                                        {% endwith %}
+                                    {% endif %}
+                                {% endwith %}
+                            {% endwith %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Sessions Stat -->
+        <div class="col-md-4">
+            <div class="stats-card d-flex align-items-center">
+                <div class="stats-icon">
+                    <i class="fas fa-history"></i>
+                </div>
+                <div>
+                    <div class="stats-title">Active Sessions</div>
+                    <div class="stats-value">{{ active_sessions|length }}</div>
+                    <small class="text-muted">Most active conversations</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Daily Activity Chart -->
+        <div class="col-lg-8">
+            <div class="chart-container">
+                <h5>Daily Activity</h5>
+                <canvas id="dailyActivityChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Model Usage Chart -->
+        <div class="col-lg-4">
+            <div class="chart-container">
+                <h5>Model Usage</h5>
+                <canvas id="modelUsageChart"></canvas>
+                <div class="chart-legend">
+                    {% for label in model_labels %}
+                    <div class="legend-item">
+                        <span class="model-dot 
+                            {% if label == 'gemini' %}
+                                gemini
+                            {% elif label == 'openai' %}
+                                openai
+                            {% elif label == 'openai-fallback' %}
+                                fallback
+                            {% else %}
+                                other
+                            {% endif %}"></span>
+                        <span>{{ label }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Active Sessions List -->
+        <div class="col-lg-12">
+            <div class="stats-card">
+                <h5 class="mb-3">Most Active Sessions</h5>
+                
+                {% if active_sessions %}
+                <div class="sessions-list">
+                    {% for session in active_sessions %}
+                    <div class="session-item">
+                        <div class="session-title">{{ session.get_title|truncatechars:50 }}</div>
+                        <div class="session-meta">
+                            <div>
+                                <i class="far fa-calendar-alt me-1"></i> {{ session.created_at|date:"M d, Y" }}
+                                <i class="far fa-comments ms-3 me-1"></i> {{ session.message_count }} messages
+                            </div>
+                            <div>
+                                <a href="{% url 'chatbot:view_session' session.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">No active sessions found.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Chart.js configurations
+        Chart.defaults.font.family = "'Nunito', 'Segoe UI', sans-serif";
+        Chart.defaults.color = '#6c757d';
+        
+        // Daily Activity Chart
+        const dailyActivityCtx = document.getElementById('dailyActivityChart').getContext('2d');
+        const dateLabels = JSON.parse('{{ date_labels|safe }}');
+        const dateData = JSON.parse('{{ date_data|safe }}');
+        
+        const dailyActivityChart = new Chart(dailyActivityCtx, {
+            type: 'line',
+            data: {
+                labels: dateLabels,
+                datasets: [{
+                    label: 'Messages',
+                    data: dateData,
+                    backgroundColor: 'rgba(79, 195, 161, 0.2)',
+                    borderColor: '#4fc3a1',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    pointBackgroundColor: '#4fc3a1',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        titleFont: {
+                            size: 13
+                        },
+                        bodyFont: {
+                            size: 12
+                        },
+                        padding: 10,
+                        cornerRadius: 4,
+                        displayColors: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Model Usage Chart
+        const modelUsageCtx = document.getElementById('modelUsageChart').getContext('2d');
+        const modelLabels = JSON.parse('{{ model_labels|safe }}');
+        const modelData = JSON.parse('{{ model_data|safe }}');
+        const modelColors = JSON.parse('{{ model_colors|safe }}');
+        
+        const modelUsageChart = new Chart(modelUsageCtx, {
+            type: 'doughnut',
+            data: {
+                labels: modelLabels,
+                datasets: [{
+                    data: modelData,
+                    backgroundColor: modelColors,
+                    borderColor: '#ffffff',
+                    borderWidth: 2,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        titleFont: {
+                            size: 13
+                        },
+                        bodyFont: {
+                            size: 12
+                        },
+                        padding: 10,
+                        cornerRadius: 4,
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw;
+                                const sum = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / sum) * 100);
+                                return `${context.label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
