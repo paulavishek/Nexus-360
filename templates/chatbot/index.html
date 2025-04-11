@@ -753,7 +753,7 @@
         const chatContainer = $('#chat-container');
         const userInput = $('#user-input');
         const sendBtn = $('#send-btn');
-        const typingIndicator = $('#typing-indicator');
+        let typingIndicator = $('#typing-indicator'); // Changed from const to let
         const sheetSelector = $('#sheet-selector');
         const exportBtn = $('#export-chat');
         const viewStarredBtn = $('#view-starred');
@@ -1026,6 +1026,7 @@
                             
                             // Add typing indicator back
                             chatContainer.append('<div class="typing-indicator" id="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>');
+                            // Update the reference to the typing indicator instead of reassigning
                             typingIndicator = $('#typing-indicator');
                             
                             // Add all messages to the chat
@@ -1101,6 +1102,7 @@
                     
                     // Add typing indicator back
                     chatContainer.append('<div class="typing-indicator" id="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>');
+                    // Update the reference to the typing indicator instead of reassigning
                     typingIndicator = $('#typing-indicator');
                     
                     // For each saved message, recreate it in the chat
@@ -1499,6 +1501,7 @@
                     
                     // Add typing indicator back
                     chatContainer.append('<div class="typing-indicator" id="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>');
+                    // Update the reference to the typing indicator instead of reassigning
                     typingIndicator = $('#typing-indicator');
                     
                     // Clear chat history
@@ -1640,6 +1643,7 @@
                 
                 // Add typing indicator back
                 chatContainer.append('<div class="typing-indicator" id="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>');
+                // Update the reference to the typing indicator instead of reassigning
                 typingIndicator = $('#typing-indicator');
                 
                 // Reset chat history array
