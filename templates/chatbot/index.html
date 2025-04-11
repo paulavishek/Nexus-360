@@ -802,24 +802,31 @@
             };
             
             chatSocket.onmessage = function(e) {
-                const data = JSON.parse(e.data);
+                console.log('WebSocket message received:', e.data); // Add debug logging
                 
-                if (data.type === 'typing') {
-                    // Show/hide typing indicator
-                    if (data.status === 'typing') {
-                        typingIndicator.show();
-                    } else {
-                        typingIndicator.hide();
-                    }
-                }
-                else if (data.type === 'message') {
-                    // Hide typing indicator
-                    typingIndicator.hide();
+                try {
+                    const data = JSON.parse(e.data);
                     
-                    // Add the message to the chat
-                    if (data.sender === 'assistant') {
-                        addMessage(data.message, 'bot', data.source, data.sheet_name);
+                    if (data.type === 'typing') {
+                        // Show/hide typing indicator
+                        if (data.status === 'typing') {
+                            typingIndicator.show();
+                        } else {
+                            typingIndicator.hide();
+                        }
                     }
+                    else if (data.type === 'message') {
+                        // Hide typing indicator
+                        typingIndicator.hide();
+                        
+                        // Add the message to the chat
+                        if (data.sender === 'assistant') {
+                            console.log('Adding assistant message to chat:', data.message.substring(0, 50) + '...');
+                            addMessage(data.message, 'bot', data.source, data.sheet_name);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error processing WebSocket message:', error);
                 }
             };
             
@@ -1149,6 +1156,8 @@
         
         // Function to add a new message to the chat
         function addMessage(content, sender, source = null, sheetName = null) {
+            console.log(`Adding message: sender=${sender}, content length=${content.length}, source=${source}`); // Debug
+            
             const messageClass = sender === 'user' ? 'user-message' : 'bot-message';
             const senderName = sender === 'user' ? 'You' : 'Assistant';
             const timestamp = getCurrentTimestamp();
@@ -1209,8 +1218,8 @@
 
             // Add message before typing indicator
             typingIndicator.before(messageHTML);
-
-            // Scroll to bottom - fixing syntax error with missing parenthesis
+            
+            // Ensure the message is visible by scrolling to it
             chatContainer.scrollTop(chatContainer.prop('scrollHeight'));
             
             // Start countdown if rate limited
@@ -1232,6 +1241,7 @@
             }
             
             // Chat will be saved through the mutation observer
+            console.log('Message added successfully'); // Debug
         }
 
         // Function to start retry countdown
@@ -1287,6 +1297,7 @@
             if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
                 // Use WebSocket for real-time communication
                 try {
+                    console.log('Sending message via WebSocket:', message.substring(0, 30) + '...');
                     chatSocket.send(JSON.stringify({
                         'message': message,
                         'history': chatHistory.slice(-10), // Limit history size to avoid large packets
@@ -1296,7 +1307,6 @@
                         'message_id': messageId,
                         'session_id': activeSessionId
                     }));
-                    console.log("Message sent via WebSocket:", message.substring(0, 30) + "...");
                 } catch (e) {
                     console.error("WebSocket send error:", e);
                     fallbackToAjax(message, selectedSheet, messageId);
