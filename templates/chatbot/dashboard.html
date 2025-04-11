@@ -190,29 +190,29 @@
                         {% if model_data %}
                             {% with gemini_count=0 openai_count=0 %}
                                 {% for i in model_data %}
-                                    {% if model_labels|index:forloop.counter0 == 'gemini' %}
-                                        {% with gemini_count=i %}{% endwith %}
-                                    {% elif model_labels|index:forloop.counter0 == 'openai' or model_labels|index:forloop.counter0 == 'openai-fallback' %}
-                                        {% with openai_count=i|add:openai_count %}{% endwith %}
+                                    {% if forloop.counter0 < model_labels|length %}
+                                        {% with current_label=model_labels|slice:forloop.counter0|first %}
+                                            {% if current_label == 'gemini' %}
+                                                {% with gemini_count=i %}{% endwith %}
+                                            {% elif current_label == 'openai' or current_label == 'openai-fallback' %}
+                                                {% with openai_count=i|add:openai_count %}{% endwith %}
+                                            {% endif %}
+                                        {% endwith %}
                                     {% endif %}
                                 {% endfor %}
                                 
                                 {% with total=gemini_count|add:openai_count %}
                                     {% if total > 0 %}
-                                        {% with gemini_percent=gemini_count|div:total|mul:100 %}
-                                        {% with openai_percent=openai_count|div:total|mul:100 %}
                                         <div class="progress-bar bg-primary" role="progressbar" 
-                                            style="--gemini-width: {% widthratio gemini_count total 100 %}%; width: var(--gemini-width);"
+                                            style="width: 50%;" 
                                             aria-valuenow="{{ gemini_count }}" aria-valuemin="0" aria-valuemax="{{ total }}">
                                             {{ gemini_count }}
                                         </div>
                                         <div class="progress-bar bg-success" role="progressbar" 
-                                            style="--openai-width: {% widthratio openai_count total 100 %}%; width: var(--openai-width);"
+                                            style="width: 50%;" 
                                             aria-valuenow="{{ openai_count }}" aria-valuemin="0" aria-valuemax="{{ total }}">
                                             {{ openai_count }}
                                         </div>
-                                        {% endwith %}
-                                        {% endwith %}
                                     {% endif %}
                                 {% endwith %}
                             {% endwith %}
@@ -306,24 +306,29 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script id="dateLabels" type="application/json">{{ date_labels|safe }}</script>
+<script id="dateData" type="application/json">{{ date_data|safe }}</script>
+<script id="modelLabels" type="application/json">{{ model_labels|safe }}</script>
+<script id="modelData" type="application/json">{{ model_data|safe }}</script>
+<script id="modelColors" type="application/json">{{ model_colors|safe }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Chart.js configurations
         Chart.defaults.font.family = "'Nunito', 'Segoe UI', sans-serif";
         Chart.defaults.color = '#6c757d';
         
-        // Daily Activity Chart
         const dailyActivityCtx = document.getElementById('dailyActivityChart').getContext('2d');
-        const dateLabels = JSON.parse('{{ date_labels|safe }}');
-        const dateData = JSON.parse('{{ date_data|safe }}');
-        
         const dailyActivityChart = new Chart(dailyActivityCtx, {
             type: 'line',
             data: {
-                labels: dateLabels,
+                labels: JSON.parse(document.getElementById('dateLabels').textContent),
                 datasets: [{
                     label: 'Messages',
-                    data: dateData,
+                    data: JSON.parse(document.getElementById('dateData').textContent),
                     backgroundColor: 'rgba(79, 195, 161, 0.2)',
                     borderColor: '#4fc3a1',
                     borderWidth: 2,
@@ -339,17 +344,11 @@
             options: {
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: false
-                    },
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                        titleFont: {
-                            size: 13
-                        },
-                        bodyFont: {
-                            size: 12
-                        },
+                        titleFont: { size: 13 },
+                        bodyFont: { size: 12 },
                         padding: 10,
                         cornerRadius: 4,
                         displayColors: false
@@ -358,35 +357,22 @@
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            precision: 0
-                        },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        }
+                        ticks: { precision: 0 },
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
-                    x: {
-                        grid: {
-                            display: false
-                        }
-                    }
+                    x: { grid: { display: false } }
                 }
             }
         });
         
-        // Model Usage Chart
         const modelUsageCtx = document.getElementById('modelUsageChart').getContext('2d');
-        const modelLabels = JSON.parse('{{ model_labels|safe }}');
-        const modelData = JSON.parse('{{ model_data|safe }}');
-        const modelColors = JSON.parse('{{ model_colors|safe }}');
-        
         const modelUsageChart = new Chart(modelUsageCtx, {
             type: 'doughnut',
             data: {
-                labels: modelLabels,
+                labels: JSON.parse(document.getElementById('modelLabels').textContent),
                 datasets: [{
-                    data: modelData,
-                    backgroundColor: modelColors,
+                    data: JSON.parse(document.getElementById('modelData').textContent),
+                    backgroundColor: JSON.parse(document.getElementById('modelColors').textContent),
                     borderColor: '#ffffff',
                     borderWidth: 2,
                     hoverOffset: 10
@@ -396,17 +382,11 @@
                 maintainAspectRatio: false,
                 cutout: '65%',
                 plugins: {
-                    legend: {
-                        display: false
-                    },
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                        titleFont: {
-                            size: 13
-                        },
-                        bodyFont: {
-                            size: 12
-                        },
+                        titleFont: { size: 13 },
+                        bodyFont: { size: 12 },
                         padding: 10,
                         cornerRadius: 4,
                         callbacks: {
