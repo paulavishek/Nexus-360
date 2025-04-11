@@ -772,8 +772,13 @@
         let lastUserMessage = '';
         let retryWaitTime = 0;
         let retryCountdown;
-        let messageQueue = []; // Queue for messages to be processed
-        let processingMessage = false; // Flag to check if currently processing a message
+        
+        // Add a status display for debugging
+        $('<div id="connection-status" style="position: fixed; bottom: 10px; right: 10px; padding: 5px 10px; background: rgba(0,0,0,0.5); color: white; font-size: 12px; border-radius: 5px; z-index: 9999;"></div>').appendTo('body');
+        
+        function updateConnectionStatus(status) {
+            $('#connection-status').text('WebSocket: ' + status);
+        }
         
         // Initialize WebSocket connection
         function connectWebSocket() {
@@ -789,30 +794,49 @@
             const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
             const wsUrl = `${wsScheme}://${window.location.host}/ws/chat/${roomName}/`;
             
+            console.log('Connecting to WebSocket:', wsUrl);
+            updateConnectionStatus('Connecting...');
+            
             chatSocket = new WebSocket(wsUrl);
             
             chatSocket.onopen = function(e) {
-                console.log('WebSocket connection established');
+                console.log('WebSocket connection established successfully');
+                updateConnectionStatus('Connected');
+                
+                // Send a test message to verify connection works both ways
+                try {
+                    chatSocket.send(JSON.stringify({
+                        'type': 'connection_test',
+                        'message': 'Connection test'
+                    }));
+                    console.log('Test message sent to WebSocket server');
+                } catch (error) {
+                    console.error('Error sending test message:', error);
+                }
             };
             
             chatSocket.onclose = function(e) {
                 console.log('WebSocket connection closed. Reconnecting...');
+                updateConnectionStatus('Disconnected - Reconnecting...');
                 // Try to reconnect after 1 second
                 setTimeout(connectWebSocket, 1000);
             };
             
             chatSocket.onmessage = function(e) {
-                console.log('WebSocket message received:', e.data); // Add debug logging
+                console.log('WebSocket message received:', e.data);
                 
                 try {
                     const data = JSON.parse(e.data);
+                    console.log('Message data parsed:', data);
                     
                     if (data.type === 'typing') {
                         // Show/hide typing indicator
                         if (data.status === 'typing') {
                             typingIndicator.show();
+                            console.log('Typing indicator shown');
                         } else {
                             typingIndicator.hide();
+                            console.log('Typing indicator hidden');
                         }
                     }
                     else if (data.type === 'message') {
@@ -822,16 +846,36 @@
                         // Add the message to the chat
                         if (data.sender === 'assistant') {
                             console.log('Adding assistant message to chat:', data.message.substring(0, 50) + '...');
-                            addMessage(data.message, 'bot', data.source, data.sheet_name);
+                            
+                            // First add a temporary placeholder with ID
+                            const msgId = 'msg_' + new Date().getTime();
+                            const tempMsg = $(`<div id="${msgId}" class="bot-message message"><div class="message-header"><span>Assistant</span><span class="message-timestamp">${getCurrentTimestamp()}</span></div><div>Processing response...</div></div>`);
+                            typingIndicator.before(tempMsg);
+                            
+                            // Then replace it with the actual message (gives better visual feedback)
+                            setTimeout(() => {
+                                addMessage(data.message, 'bot', data.source || 'gemini', data.sheet_name);
+                                tempMsg.remove();
+                            }, 100);
                         }
+                    } else if (data.type === 'connection_test_response') {
+                        console.log('Connection test successful, server responded:', data.message);
                     }
                 } catch (error) {
                     console.error('Error processing WebSocket message:', error);
+                    
+                    // Try to add raw message as fallback
+                    try {
+                        addMessage("Error parsing response. Raw data: " + e.data.substring(0, 100) + "...", 'bot', 'error');
+                    } catch (err) {
+                        console.error('Error adding fallback message:', err);
+                    }
                 }
             };
             
             chatSocket.onerror = function(e) {
                 console.error('WebSocket error:', e);
+                updateConnectionStatus('Error');
                 // Fall back to AJAX if WebSocket fails
                 console.log('Falling back to AJAX for communication');
             };
@@ -1156,92 +1200,107 @@
         
         // Function to add a new message to the chat
         function addMessage(content, sender, source = null, sheetName = null) {
-            console.log(`Adding message: sender=${sender}, content length=${content.length}, source=${source}`); // Debug
+            console.log(`Adding message: sender=${sender}, content length=${content ? content.length : 0}, source=${source}`);
+            
+            if (!content) {
+                console.error('Attempted to add empty message');
+                return;
+            }
             
             const messageClass = sender === 'user' ? 'user-message' : 'bot-message';
             const senderName = sender === 'user' ? 'You' : 'Assistant';
             const timestamp = getCurrentTimestamp();
             
-            // Format the message content for the bot
-            const formattedContent = sender === 'user' ? content : formatMessage(content);
-            
-            let messageHTML = `<div class="${messageClass} message">`;
-            messageHTML += `<div class="message-header">
+            try {
+                // Format the message content for the bot
+                const formattedContent = sender === 'user' ? content : formatMessage(content);
+                
+                let messageHTML = `<div class="${messageClass} message">`;
+                messageHTML += `<div class="message-header">
                                 <span>${senderName}</span>
                                 <span class="message-timestamp">${timestamp}</span>
                             </div>`;
-            messageHTML += `<div>${formattedContent}</div>`;
+                messageHTML += `<div>${formattedContent}</div>`;
 
-            if (sender !== 'user') {
-                const modelInfo = getModelInfo(source);
-                let sourceInfo = '';
-                
-                if (source) {
-                    sourceInfo += `${modelInfo.icon} ${modelInfo.name}${modelInfo.badge}`;
-                }
-                
-                if (sheetName) {
-                    sourceInfo += ` <span class="badge bg-secondary sheet-badge">Source: ${sheetName}</span>`;
-                }
-                
-                if (sourceInfo) {
-                    messageHTML += `<div class="message-source">${sourceInfo}</div>`;
-                }
-
-                // Add rate limit specific UI if needed
-                if ((source === 'openai-fallback' || source === 'gemini-fallback') && content.includes('using backup AI service')) {
-                    // Remove the fallback notice from the content since we're displaying it properly in the UI
-                    const cleanContent = content.replace(/\n\n\(Answered using backup AI service.*\)/, '');
+                if (sender !== 'user') {
+                    const modelInfo = getModelInfo(source);
+                    let sourceInfo = '';
                     
-                    // Find the content div we just added and update it
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = messageHTML;
-                    const contentDiv = tempDiv.querySelector('div:nth-child(2)');
-                    contentDiv.innerHTML = formatMessage(cleanContent);
-                    messageHTML = tempDiv.innerHTML;
+                    if (source) {
+                        sourceInfo += `${modelInfo.icon} ${modelInfo.name}${modelInfo.badge}`;
+                    }
+                    
+                    if (sheetName) {
+                        sourceInfo += ` <span class="badge bg-secondary sheet-badge">Source: ${sheetName}</span>`;
+                    }
+                    
+                    if (sourceInfo) {
+                        messageHTML += `<div class="message-source">${sourceInfo}</div>`;
+                    }
+
+                    // Add rate limit specific UI if needed
+                    if ((source === 'openai-fallback' || source === 'gemini-fallback') && content.includes('using backup AI service')) {
+                        // Remove the fallback notice from the content since we're displaying it properly in the UI
+                        const cleanContent = content.replace(/\n\n\(Answered using backup AI service.*\)/, '');
+                        
+                        // Find the content div we just added and update it
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = messageHTML;
+                        const contentDiv = tempDiv.querySelector('div:nth-child(2)');
+                        contentDiv.innerHTML = formatMessage(cleanContent);
+                        messageHTML = tempDiv.innerHTML;
+                    }
+                    
+                    // Add message actions for bot messages
+                    messageHTML += `
+                        <div class="message-actions">
+                            <button class="message-action-btn copy-btn" title="Copy to clipboard">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <button class="message-action-btn star-btn" title="Star this conversation">
+                                <i class="fas fa-star-half-alt"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                messageHTML += `</div>`;
+
+                // Create element and insert it properly
+                const messageElement = $(messageHTML);
+                typingIndicator.before(messageElement);
+                
+                // Force a reflow to ensure the message is rendered
+                messageElement[0].offsetHeight;
+                
+                // Ensure the message is visible by scrolling to bottom
+                chatContainer.scrollTop(chatContainer.prop('scrollHeight'));
+                
+                // Start countdown if rate limited
+                if (source === 'fallback' && content.includes('high demand')) {
+                    startRetryCountdown();
+                }
+
+                // Add to chat history (don't add error messages to history)
+                if (source !== 'error' && source !== 'fallback') {
+                    chatHistory.push({
+                        role: sender === 'user' ? 'user' : 'assistant',
+                        content: content
+                    });
+
+                    // Keep history at a reasonable size (last 20 messages)
+                    if (chatHistory.length > 20) {
+                        chatHistory = chatHistory.slice(chatHistory.length - 20);
+                    }
                 }
                 
-                // Add message actions for bot messages
-                messageHTML += `
-                    <div class="message-actions">
-                        <button class="message-action-btn copy-btn" title="Copy to clipboard">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                        <button class="message-action-btn star-btn" title="Star this conversation">
-                            <i class="fas fa-star-half-alt"></i>
-                        </button>
-                    </div>
-                `;
+                console.log('Message added successfully');
+                return messageElement;
+            } catch (error) {
+                console.error('Error adding message to chat:', error);
+                // Add a simple message as fallback
+                typingIndicator.before(`<div class="${messageClass} message"><div>Error showing message. Please try again.</div></div>`);
             }
-
-            messageHTML += `</div>`;
-
-            // Add message before typing indicator
-            typingIndicator.before(messageHTML);
-            
-            // Ensure the message is visible by scrolling to it
-            chatContainer.scrollTop(chatContainer.prop('scrollHeight'));
-            
-            // Start countdown if rate limited
-            if (source === 'fallback' && content.includes('high demand')) {
-                startRetryCountdown();
-            }
-
-            // Add to chat history (don't add error messages to history)
-            if (source !== 'error' && source !== 'fallback') {
-                chatHistory.push({
-                    role: sender === 'user' ? 'user' : 'assistant',
-                    content: content
-                });
-
-                // Keep history at a reasonable size (last 20 messages)
-                if (chatHistory.length > 20) {
-                    chatHistory = chatHistory.slice(chatHistory.length - 20);
-                }
-            }
-            
-            // Chat will be saved through the mutation observer
-            console.log('Message added successfully'); // Debug
         }
 
         // Function to start retry countdown
@@ -1281,7 +1340,7 @@
 
             // Only add user message to chat if not retrying
             if (!isRetry) {
-                addMessage(message, 'user');
+                const userMessageElement = addMessage(message, 'user');
                 
                 // Clear input
                 userInput.val('');
@@ -1297,8 +1356,9 @@
             if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
                 // Use WebSocket for real-time communication
                 try {
-                    console.log('Sending message via WebSocket:', message.substring(0, 30) + '...');
-                    chatSocket.send(JSON.stringify({
+                    console.log('Sending message via WebSocket:', message);
+                    
+                    const payload = JSON.stringify({
                         'message': message,
                         'history': chatHistory.slice(-10), // Limit history size to avoid large packets
                         'model': selectedModel,
@@ -1306,13 +1366,16 @@
                         'refresh_data': refreshDataMode,
                         'message_id': messageId,
                         'session_id': activeSessionId
-                    }));
+                    });
+                    
+                    console.log('WebSocket payload:', payload.substring(0, 200) + '...');
+                    chatSocket.send(payload);
                 } catch (e) {
                     console.error("WebSocket send error:", e);
                     fallbackToAjax(message, selectedSheet, messageId);
                 }
             } else {
-                console.log("WebSocket not connected, using AJAX fallback");
+                console.log("WebSocket not connected (status:" + (chatSocket ? chatSocket.readyState : 'null') + "), using AJAX fallback");
                 fallbackToAjax(message, selectedSheet, messageId);
             }
         }
