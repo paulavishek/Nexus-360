@@ -16,6 +16,7 @@ python-dotenv>=1.0.0
 # WebSocket Support
 channels>=4.0.0
 daphne>=4.0.0
+channels-redis>=4.0.0  # Added Redis support for channels 
 
 # Visualization (for Dashboard)
 matplotlib>=3.5.0
