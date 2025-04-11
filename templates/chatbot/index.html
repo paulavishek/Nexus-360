@@ -1286,71 +1286,84 @@
             // Check if WebSocket is connected
             if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
                 // Use WebSocket for real-time communication
-                chatSocket.send(JSON.stringify({
-                    'message': message,
-                    'history': chatHistory,
-                    'model': selectedModel,
-                    'sheet_name': selectedSheet,
-                    'refresh_data': refreshDataMode,
-                    'message_id': messageId,
-                    'session_id': activeSessionId
-                }));
+                try {
+                    chatSocket.send(JSON.stringify({
+                        'message': message,
+                        'history': chatHistory.slice(-10), // Limit history size to avoid large packets
+                        'model': selectedModel,
+                        'sheet_name': selectedSheet,
+                        'refresh_data': refreshDataMode,
+                        'message_id': messageId,
+                        'session_id': activeSessionId
+                    }));
+                    console.log("Message sent via WebSocket:", message.substring(0, 30) + "...");
+                } catch (e) {
+                    console.error("WebSocket send error:", e);
+                    fallbackToAjax(message, selectedSheet, messageId);
+                }
             } else {
-                // Fall back to AJAX if WebSocket is not available
-                $.ajax({
-                    type: 'POST',
-                    url: '/chat/',
-                    contentType: 'application/json',
-                    data: JSON.stringify({
-                        message: message,
-                        history: chatHistory,
-                        model: selectedModel,
-                        sheet_name: selectedSheet,
-                        refresh_data: refreshDataMode,
-                        session_id: activeSessionId
-                    }),
-                    beforeSend: function (xhr) {
-                        // Add the CSRF token to the request header
-                        xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
-                    },
-                    success: function (data) {
-                        // Reset refresh data mode after use
-                        refreshDataMode = false;
-                        
-                        // Hide typing indicator
-                        typingIndicator.hide();
-
-                        // Add bot response to chat
-                        addMessage(
-                            data.response, 
-                            'bot', 
-                            data.source, 
-                            data.sheet_name
-                        );
-                        
-                        // If this was a successful retry, increase wait time for future rate limits
-                        if (isRetry && data.source === 'openai') {
-                            retryWaitTime = Math.min(retryWaitTime * 2, 300); // Max 5 minutes
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        // Reset refresh data mode after use
-                        refreshDataMode = false;
-                        
-                        // Hide typing indicator
-                        typingIndicator.hide();
-
-                        // Show error message
-                        let errorMessage = "Sorry, I encountered an error processing your request.";
-                        if (xhr.responseJSON && xhr.responseJSON.error) {
-                            errorMessage += " Details: " + xhr.responseJSON.error;
-                        }
-                        addMessage(errorMessage, 'bot', 'error');
-
-                        console.error("AJAX Error:", status, error);
-                    }
-                });
+                console.log("WebSocket not connected, using AJAX fallback");
+                fallbackToAjax(message, selectedSheet, messageId);
             }
+        }
+        
+        // AJAX fallback when WebSocket is unavailable
+        function fallbackToAjax(message, selectedSheet, messageId) {
+            // Fall back to AJAX if WebSocket is not available
+            $.ajax({
+                type: 'POST',
+                url: '/chat/',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    message: message,
+                    history: chatHistory,
+                    model: selectedModel,
+                    sheet_name: selectedSheet,
+                    refresh_data: refreshDataMode,
+                    session_id: activeSessionId,
+                    message_id: messageId
+                }),
+                beforeSend: function (xhr) {
+                    // Add the CSRF token to the request header
+                    xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+                },
+                success: function (data) {
+                    // Reset refresh data mode after use
+                    refreshDataMode = false;
+                    
+                    // Hide typing indicator
+                    typingIndicator.hide();
+
+                    // Add bot response to chat
+                    addMessage(
+                        data.response, 
+                        'bot', 
+                        data.source, 
+                        data.sheet_name
+                    );
+                    
+                    // If this was a successful retry, increase wait time for future rate limits
+                    if (isRetrying && data.source === 'openai') {
+                        retryWaitTime = Math.min(retryWaitTime * 2, 300); // Max 5 minutes
+                    }
+                },
+                error: function (xhr, status, error) {
+                    // Reset refresh data mode after use
+                    refreshDataMode = false;
+                    
+                    // Hide typing indicator
+                    typingIndicator.hide();
+
+                    // Show error message
+                    let errorMessage = "Sorry, I encountered an error processing your request.";
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMessage += " Details: " + xhr.responseJSON.error;
+                    }
+                    addMessage(errorMessage, 'bot', 'error');
+
+                    console.error("AJAX Error:", status, error);
+                }
+            });
         }
 
         // Handle model selection toggle
