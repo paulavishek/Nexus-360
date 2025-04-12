@@ -9,25 +9,25 @@
 </div>
 
 ## 📋 Table of Contents
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [User Guide](#user-guide)
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+- [User Guide](#-user-guide)
   - [Getting Started](#getting-started)
   - [Using the Chat Interface](#using-the-chat-interface)
   - [Model Selection](#model-selection)
   - [Chat Sessions](#chat-sessions)
   - [Dashboard and Analytics](#dashboard-and-analytics)
   - [Sample Questions](#sample-questions)
-- [Technical Setup](#technical-setup)
+- [Technical Setup](#-technical-setup)
   - [Requirements](#requirements)
   - [Installation](#installation)
   - [Configuration](#configuration)
   - [Database Scaling](#database-scaling)
-- [Admin Guide](#admin-guide)
-- [Advanced Features](#advanced-features)
-- [Troubleshooting](#troubleshooting)
-- [Security](#security)
-- [Production Deployment](#production-deployment)
+- [Admin Guide](#-admin-guide)
+- [Advanced Features](#-advanced-features)
+- [Troubleshooting](#-troubleshooting)
+- [Security](#-security)
+- [Production Deployment](#-production-deployment)
 - [License](#license)
 
 ## 🔍 Overview
@@ -50,7 +50,7 @@ This application brings your project data to life, allowing both technical and n
 - **Chat History**: Save all conversations for future reference and knowledge sharing
 - **Session Management**: Create multiple chat sessions for different topics or projects
 - **Usage Analytics**: Track usage patterns and most frequent questions
-- **Budget Analysis**: Automatically identify over-budget or under-budget projects
+- **Model Usage Analytics**: Monitor which AI models are being utilized and their performance
 - **Responsive Design**: Works on desktops, tablets, and mobile devices
 - **Fallback Strategy**: Seamlessly switches between AI models if one experiences issues
 
@@ -95,7 +95,7 @@ Access insights about your chatbot usage:
 
 1. Navigate to the Dashboard tab to see usage statistics
 2. View charts showing message frequency, model usage, and most active sessions
-3. Get insights into which projects are being discussed most frequently
+3. Get insights into which models are being used most frequently
 
 ### Sample Questions
 
