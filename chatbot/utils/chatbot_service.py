@@ -80,19 +80,24 @@ class ChatbotService:
             context_text += f"{context}\n"
             
         try:
-            # Use Gemini as the primary model now
+            # Determine which client is in the primary position
+            primary_client_name = 'gemini'
+            if isinstance(self.gemini_client, OpenAIClient):
+                primary_client_name = 'openai'
+            
+            # Use primary model (whichever is in gemini_client position)
             response = self.gemini_client.get_chatbot_response(prompt, database_data, history, context_text)
             
             return {
                 'response': response,
-                'source': 'gemini',  # Changed from 'openai' to 'gemini'
+                'source': primary_client_name,  # Use the correct model name
                 'error': None
             }
         except Exception as e:
             error_message = str(e)
-            print(f"Gemini client error: {e}")
+            print(f"Primary client error: {e}")
             
-            # Fall back to OpenAI if Gemini fails
+            # Fall back to the secondary model
             return self._try_openai_with_backoff(prompt, database_data, history, context_text, error_message)
     
     def _try_openai_with_backoff(self, prompt, database_data, history, context_text, primary_error_message):
@@ -112,35 +117,46 @@ class ChatbotService:
         max_retries = self.rate_limit_retries
         base_delay = self.rate_limit_cooldown
         
+        # Determine which client is in the fallback position
+        fallback_client_name = 'openai'
+        if isinstance(self.openai_client, GeminiClient):
+            fallback_client_name = 'gemini'
+        
         for attempt in range(max_retries):
             try:
-                print(f"Using OpenAI fallback (attempt {attempt + 1}/{max_retries})")
+                print(f"Using {fallback_client_name} fallback (attempt {attempt + 1}/{max_retries})")
                 fallback_response = self.openai_client.get_chatbot_response(prompt, database_data, history, context_text)
                 return {
                     'response': fallback_response,
-                    'source': 'openai-fallback',  # Mark this as the fallback model
+                    'source': f'{fallback_client_name}-fallback',  # Mark this as the fallback model
                     'error': None
                 }
-            except Exception as openai_error:
-                error_str = str(openai_error).lower()
+            except Exception as fallback_error:
+                error_str = str(fallback_error).lower()
                 
                 # Check if it's a rate limit error
                 if "rate limit" in error_str or "too many requests" in error_str or "429" in error_str:
                     # If this is the last attempt, return the error
                     if attempt == max_retries - 1:
-                        print("OpenAI rate limit exceeded, using Gemini fallback")
+                        print(f"{fallback_client_name} rate limit exceeded, trying primary model again")
                         try:
-                            # Try Gemini again with a simplified prompt
+                            # Try primary model again with a simplified prompt
                             simplified_prompt = f"Please answer this question concisely: {prompt}"
                             simplified_response = self.gemini_client.get_chatbot_response(
                                 simplified_prompt, database_data, None, context_text
                             )
+                            
+                            # Determine which client is in the primary position for retry
+                            retry_client_name = 'gemini'
+                            if isinstance(self.gemini_client, OpenAIClient):
+                                retry_client_name = 'openai'
+                                
                             return {
                                 'response': simplified_response,
-                                'source': 'gemini-retry',
+                                'source': f'{retry_client_name}-retry',
                                 'error': None
                             }
-                        except Exception as gemini_retry_error:
+                        except Exception as primary_retry_error:
                             # Both models failed, return a friendly error
                             return {
                                 'response': "I'm sorry, both AI services are currently experiencing high demand. Please try again in a few minutes.",
@@ -150,15 +166,15 @@ class ChatbotService:
                     
                     # Calculate delay with jitter (random variation)
                     delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
-                    print(f"OpenAI rate limit exceeded, retrying in {delay:.2f} seconds (attempt {attempt + 1}/{max_retries})")
+                    print(f"{fallback_client_name} rate limit exceeded, retrying in {delay:.2f} seconds (attempt {attempt + 1}/{max_retries})")
                     time.sleep(delay)
                 else:
                     # Not a rate limit error, just a regular error
-                    print(f"OpenAI fallback error: {openai_error}")
+                    print(f"{fallback_client_name} fallback error: {fallback_error}")
                     return {
                         'response': f"I'm sorry, I'm having trouble processing your request right now. Please try again with a simpler query.",
                         'source': 'error',
-                        'error': f"Primary error: {primary_error_message}, Fallback error: {str(openai_error)}"
+                        'error': f"Primary error: {primary_error_message}, Fallback error: {str(fallback_error)}"
                     }
         
         # If we've exhausted all retries
