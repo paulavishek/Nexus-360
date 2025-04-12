@@ -1,7 +1,7 @@
 # Project Management Chatbot
 
 <div align="center">
-  <img src="staticfiles/admin/img/icon-yes.svg" alt="PM Chatbot Logo" width="100" height="100">
+  <img src="staticfiles\admin\img\pm_chatbot.png" alt="PM Chatbot Logo" width="100" height="100">
   <h3>Intelligent Project Data Assistant</h3>
   <p>Your AI-powered companion for project insights</p>
 </div>
