@@ -28,3 +28,9 @@ django-cors-headers>=3.10.0
 # Optional: Additional utilities
 requests>=2.25.0
 pillow>=9.0.0  # For image processing if needed
+
+# Database Connections
+sqlalchemy>=2.0.0
+mysqlclient>=2.1.0  # MySQL connector
+psycopg2-binary>=2.9.5  # PostgreSQL connector
+mysql-connector-python>=8.0.0  # Alternative MySQL connector

@@ -226,3 +226,7 @@ CACHES = {
 
 # Cache timeouts (in seconds)
 GOOGLE_SHEETS_CACHE_TIMEOUT = 300  # 5 minutes
+
+# Database query configuration
+USE_SQL_DATABASE = os.getenv('USE_SQL_DATABASE', 'False').lower() == 'true'  # Set to True to use SQL instead of Google Sheets
+SQL_QUERY_ROW_LIMIT = 1000  # Maximum number of rows to return for safety
