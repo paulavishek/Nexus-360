@@ -19,4 +19,5 @@ urlpatterns = [
     path('save-preferences/', views.save_preferences, name='save_preferences'),
     path('create-session/', views.create_new_session, name='create_session'),
     path('switch-session/', views.switch_session, name='switch_session'),
+    path('reset-chat/', views.reset_chat_history, name='reset_chat'),
 ]

@@ -468,3 +468,37 @@ def get_session_messages(request, session_id):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+@login_required(login_url='chatbot:login')
+@require_POST
+def reset_chat_history(request):
+    """
+    API endpoint to reset chat history for the current active session
+    """
+    try:
+        # Get the active session for the current user
+        active_session = ChatSession.objects.filter(user=request.user, is_active=True).first()
+        
+        if active_session:
+            # Delete all messages in this session
+            ChatMessage.objects.filter(session=active_session).delete()
+            
+            # Update the session title if needed
+            active_session.title = None
+            active_session.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Chat history has been reset successfully.'
+            })
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'No active chat session found.'
+            }, status=404)
+            
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

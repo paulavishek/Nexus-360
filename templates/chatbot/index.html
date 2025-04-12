@@ -1612,45 +1612,63 @@
         // Handle reset history button click
         resetHistoryBtn.on('click', function() {
             if (confirm('Are you sure you want to reset the chat history? This will clear all messages.')) {
-                // Clear localStorage
-                localStorage.removeItem('pmChatbot_chatHistory');
+                // Show loading indicator
+                chatContainer.html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-3">Resetting chat history...</p></div>');
                 
-                // Clear chat window
-                chatContainer.empty();
-                
-                // Add welcome message back
-                let welcomeHTML = `
-                <div class="bot-message message">
-                    <div class="message-header">
-                        <span>Assistant</span>
-                        <span class="message-timestamp">${getCurrentTimestamp()}</span>
-                    </div>
-                    <div>Hello! I'm your database assistant. How can I help you today?</div>
-                    <div class="message-source">
-                        <i class="fas fa-robot me-1"></i> Google Gemini 1.5-Flash <span class="model-badge gemini">Gemini</span>
-                    </div>
-                    <div class="message-actions">
-                        <button class="message-action-btn copy-btn" title="Copy to clipboard">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                        <button class="message-action-btn star-btn" title="Star this conversation">
-                            <i class="fas fa-star-half-alt"></i>
-                        </button>
-                    </div>
-                </div>`;
-                
-                chatContainer.append(welcomeHTML);
-                
-                // Add typing indicator back
-                chatContainer.append('<div class="typing-indicator" id="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>');
-                // Update the reference to the typing indicator instead of reassigning
-                typingIndicator = $('#typing-indicator');
-                
-                // Reset chat history array
-                chatHistory = [];
-                
-                // Show system message
-                addMessage('Chat history has been reset.', 'bot', 'System');
+                // Call the backend to clear messages from the database
+                $.ajax({
+                    type: 'POST',
+                    url: '/reset-chat/',
+                    beforeSend: function (xhr) {
+                        xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+                    },
+                    success: function(data) {
+                        // Clear localStorage as well
+                        localStorage.removeItem('pmChatbot_chatHistory');
+                        
+                        // Clear chat window
+                        chatContainer.empty();
+                        
+                        // Add typing indicator back
+                        chatContainer.append('<div class="typing-indicator" id="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>');
+                        // Update the reference to the typing indicator
+                        typingIndicator = $('#typing-indicator');
+                        
+                        // Reset chat history array
+                        chatHistory = [];
+                        
+                        // Show welcome message
+                        let welcomeHTML = `
+                        <div class="bot-message message">
+                            <div class="message-header">
+                                <span>Assistant</span>
+                                <span class="message-timestamp">${getCurrentTimestamp()}</span>
+                            </div>
+                            <div>Hello! I'm your database assistant. How can I help you today?</div>
+                            <div class="message-source">
+                                <i class="fas fa-info-circle me-1"></i> System
+                            </div>
+                            <div class="message-actions">
+                                <button class="message-action-btn copy-btn" title="Copy to clipboard">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button class="message-action-btn star-btn" title="Star this conversation">
+                                    <i class="fas fa-star-half-alt"></i>
+                                </button>
+                            </div>
+                        </div>`;
+                        
+                        chatContainer.append(welcomeHTML);
+                    },
+                    error: function(xhr, status, error) {
+                        // Show error message
+                        chatContainer.html(`<div class="alert alert-danger" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            Error resetting chat history. Please try again.
+                        </div>`);
+                        console.error("Error resetting chat history:", error);
+                    }
+                });
             }
         });
 
