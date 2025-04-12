@@ -28,7 +28,6 @@
 - [Troubleshooting](#-troubleshooting)
 - [Security](#-security)
 - [Production Deployment](#-production-deployment)
-- [License](#license)
 
 ## 🔍 Overview
 
