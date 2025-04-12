@@ -187,37 +187,54 @@
                         </div>
                     </div>
                     <div class="progress mt-2" style="height: 12px;">
-                        {% if model_data %}
+                        {% if model_data and model_labels %}
                             {% with gemini_count=0 openai_count=0 %}
                                 {% for i in model_data %}
-                                    {% if forloop.counter0 < model_labels|length %}
-                                        {% with current_label=model_labels|slice:forloop.counter0|first %}
-                                            {% if current_label == 'gemini' %}
-                                                {% with gemini_count=i %}{% endwith %}
-                                            {% elif current_label == 'openai' or current_label == 'openai-fallback' %}
-                                                {% with openai_count=i|add:openai_count %}{% endwith %}
-                                            {% endif %}
-                                        {% endwith %}
-                                    {% endif %}
+                                    {% with model=model_labels|json_script:"model-labels"|safe %}
+                                        {% if forloop.counter0 < model_labels|length %}
+                                            {% with label=model_labels|safe %}
+                                                {% if 'gemini' in label %}
+                                                    {% with gemini_count=model_data.0 %}{% endwith %}
+                                                {% elif 'openai' in label %}
+                                                    {% with openai_count=model_data.1 %}{% endwith %}
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% endif %}
+                                    {% endwith %}
                                 {% endfor %}
                                 
-                                {% with total=gemini_count|add:openai_count %}
-                                    {% if total > 0 %}
-                                        <div class="progress-bar bg-primary" role="progressbar" 
-                                            style="width: 50%;" 
-                                            aria-valuenow="{{ gemini_count }}" aria-valuemin="0" aria-valuemax="{{ total }}">
-                                            {{ gemini_count }}
-                                        </div>
-                                        <div class="progress-bar bg-success" role="progressbar" 
-                                            style="width: 50%;" 
-                                            aria-valuenow="{{ openai_count }}" aria-valuemin="0" aria-valuemax="{{ total }}">
-                                            {{ openai_count }}
-                                        </div>
+                                {% with total=model_data|safe %}
+                                    {% if total %}
+                                        {% with gemini_value=model_data.0|default:0 %}
+                                        {% with openai_value=model_data.1|default:0 %}
+                                        {% with total_value=gemini_value|add:openai_value %}
+                                            {% if total_value > 0 %}
+                                                {% widthratio gemini_value total_value 100 as gemini_percent %}
+                                                {% widthratio openai_value total_value 100 as openai_percent %}
+                                                    <div class="progress-bar bg-primary w-{{ gemini_percent }}" role="progressbar" 
+                                                        aria-valuenow="{{ gemini_value }}" aria-valuemin="0" aria-valuemax="{{ total_value }}">
+                                                        {{ gemini_value }}
+                                                    </div>
+                                                    <div class="progress-bar bg-success w-{{ openai_percent }}" role="progressbar" 
+                                                        aria-valuenow="{{ openai_value }}" aria-valuemin="0" aria-valuemax="{{ total_value }}">
+                                                        {{ openai_value }}
+                                                    </div>
+                                            {% else %}
+                                                <div class="small text-muted text-center w-100">No model usage data yet</div>
+                                            {% endif %}
+                                        {% endwith %}
+                                        {% endwith %}
+                                        {% endwith %}
+                                    {% else %}
+                                        <div class="small text-muted text-center w-100">No model usage data yet</div>
                                     {% endif %}
                                 {% endwith %}
                             {% endwith %}
+                        {% else %}
+                            <div class="small text-muted text-center w-100">No model usage data yet</div>
                         {% endif %}
                     </div>
+                    <div class="small text-muted mt-2 text-center">Based on your chat history</div>
                 </div>
             </div>
         </div>
