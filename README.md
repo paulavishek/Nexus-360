@@ -270,9 +270,6 @@ For production deployment, we recommend:
 5. Implementing regular backups of the database
 6. Setting up monitoring for API usage and system performance
 
-## 📄 License
-
-[MIT License](LICENSE)
 
 ---
 
