@@ -276,6 +276,6 @@ For production deployment, we recommend:
 ---
 
 <div align="center">
-  <p>Developed with ❤️ by Avishek Paul</p>
+  <p>Developed by Avishek Paul</p>
   <p>© 2025 All Rights Reserved</p>
 </div>
