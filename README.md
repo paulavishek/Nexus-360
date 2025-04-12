@@ -1,7 +1,9 @@
 # Project Management Chatbot
 
 <div align="center">
-  ![PM Chatbot Logo](pm_chatbot_logo.png)
+  <p align="center">
+  <img src="pm_chatbot_logo.png" alt="PM Chatbot Logo" width="300">
+</p>
   <h3>Intelligent Project Data Assistant</h3>
   <p>Your AI-powered companion for project insights</p>
 </div>
