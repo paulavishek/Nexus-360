@@ -22,6 +22,7 @@
   - [Requirements](#requirements)
   - [Installation](#installation)
   - [Configuration](#configuration)
+  - [Database Scaling](#database-scaling)
 - [Admin Guide](#admin-guide)
 - [Advanced Features](#advanced-features)
 - [Troubleshooting](#troubleshooting)
@@ -31,19 +32,21 @@
 
 ## 🔍 Overview
 
-The Project Management Chatbot is an intelligent assistant that connects to your Google Sheets project database and provides natural language answers to your questions. Simply type your questions about projects, budgets, timelines, or team members, and get instant insights powered by OpenAI and Google Gemini AI models.
+The Project Management Chatbot is an intelligent assistant that connects to your data sources (Google Sheets or SQL databases) and provides natural language answers to your questions. Simply type your questions about projects, budgets, timelines, or team members, and get instant insights powered by OpenAI and Google Gemini AI models.
 
 This application brings your project data to life, allowing both technical and non-technical team members to access critical information through a simple conversation interface. No SQL queries or spreadsheet formulas needed!
 
 ## ✨ Key Features
 
-- **Google Sheets Integration**: Connect directly to your existing project data in Google Sheets
+- **Flexible Data Source Integration**: 
+  - **Google Sheets**: Connect directly to your existing project data in Google Sheets
+  - **SQL Databases**: Scale up with MySQL or PostgreSQL for larger datasets
 - **Dual AI Models**: Choose between two powerful AI engines:
   - **Google Gemini**: Google's latest AI model for fast, efficient responses
   - **OpenAI**: Access OpenAI's powerful language models for rich, detailed answers
 - **Natural Language Interface**: Ask questions in plain English about projects, budgets, timelines, resources
 - **Real-time Responses**: Get immediate answers through our WebSocket technology
-- **Multi-Sheet Support**: Query across multiple project sheets (Marketing, Development, etc.)
+- **Multi-Sheet/Table Support**: Query across multiple data sources (Marketing, Development, etc.)
 - **Chat History**: Save all conversations for future reference and knowledge sharing
 - **Session Management**: Create multiple chat sessions for different topics or projects
 - **Usage Analytics**: Track usage patterns and most frequent questions
@@ -127,6 +130,12 @@ Here are some examples of questions you can ask the chatbot:
 - "Which department has the most active projects?"
 - "Show me all projects related to website development across all departments"
 
+#### SQL Database Queries (when using MySQL/PostgreSQL)
+- "Show me the relationship between project budget and timeline delays"
+- "Calculate the average completion rate across all teams"
+- "Identify which clients have the highest number of change requests"
+- "Find patterns in budget overruns across different project types"
+
 ## 🛠️ Technical Setup
 
 ### Requirements
@@ -137,6 +146,7 @@ Here are some examples of questions you can ask the chatbot:
 - OpenAI API key
 - Google Gemini API key
 - Google Sheets API credentials
+- MySQL or PostgreSQL (for scaled deployments)
 
 ### Installation
 
@@ -176,6 +186,17 @@ Here are some examples of questions you can ask the chatbot:
    
    # Optional: Additional sheets in format "name1:id1,name2:id2"
    ADDITIONAL_SHEETS=Marketing:sheet_id_1,Development:sheet_id_2
+   
+   # Database configuration (for scaling)
+   DB_TYPE=sqlite  # Options: sqlite, mysql, postgresql
+   # DB_NAME=your_db_name
+   # DB_USER=your_db_username
+   # DB_PASSWORD=your_db_password
+   # DB_HOST=localhost
+   # DB_PORT=5432  # 5432 for PostgreSQL, 3306 for MySQL
+   
+   # Enable SQL Database for chatbot queries
+   USE_SQL_DATABASE=False  # Set to True to use SQL instead of Google Sheets
    ```
 
 2. Run migrations:
@@ -200,6 +221,88 @@ Here are some examples of questions you can ask the chatbot:
    ```
 
 5. Access the application at http://localhost:8000
+
+### Database Scaling
+
+As your project grows, you can transition from SQLite to more robust database systems:
+
+#### Migrating to PostgreSQL
+
+1. Install PostgreSQL and necessary Python packages:
+   ```bash
+   pip install psycopg2-binary sqlalchemy
+   ```
+
+2. Create a PostgreSQL database:
+   ```sql
+   CREATE DATABASE pm_chatbot;
+   CREATE USER pm_chatbot_user WITH PASSWORD 'secure_password';
+   GRANT ALL PRIVILEGES ON DATABASE pm_chatbot TO pm_chatbot_user;
+   ```
+
+3. Update your `.env` file:
+   ```
+   DB_TYPE=postgresql
+   DB_NAME=pm_chatbot
+   DB_USER=pm_chatbot_user
+   DB_PASSWORD=secure_password
+   DB_HOST=localhost
+   DB_PORT=5432
+   USE_SQL_DATABASE=True
+   ```
+
+4. Migrate your data:
+   ```bash
+   python manage.py dumpdata --exclude auth.permission --exclude contenttypes > data_backup.json
+   python manage.py migrate
+   python manage.py loaddata data_backup.json
+   ```
+
+#### Migrating to MySQL
+
+1. Install MySQL and necessary Python packages:
+   ```bash
+   pip install mysqlclient mysql-connector-python sqlalchemy
+   ```
+
+2. Create a MySQL database:
+   ```sql
+   CREATE DATABASE pm_chatbot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE USER 'pm_chatbot_user'@'localhost' IDENTIFIED BY 'secure_password';
+   GRANT ALL PRIVILEGES ON pm_chatbot.* TO 'pm_chatbot_user'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
+
+3. Update your `.env` file:
+   ```
+   DB_TYPE=mysql
+   DB_NAME=pm_chatbot
+   DB_USER=pm_chatbot_user
+   DB_PASSWORD=secure_password
+   DB_HOST=localhost
+   DB_PORT=3306
+   USE_SQL_DATABASE=True
+   ```
+
+4. Migrate your data following the same steps as for PostgreSQL.
+
+#### Using SQL Database for Chatbot Queries
+
+When scaling with a SQL database, you can activate the direct SQL querying feature:
+
+1. Set `USE_SQL_DATABASE=True` in your `.env` file
+2. The chatbot will now query your SQL database directly instead of Google Sheets
+3. For optimal performance, ensure your database tables are properly indexed
+4. Consider setting up read-only credentials for the chatbot to enhance security
+
+#### Benefits of SQL Database Integration
+
+- **Performance**: Handle millions of records with efficient queries
+- **Complex Analysis**: Enable multi-table joins and complex aggregations
+- **Data Integrity**: Leverage database constraints and relationships
+- **Security**: Implement row-level security and user-based permissions
+- **Scalability**: Support concurrent users and growing datasets
+- **Real-time Updates**: Access the most current data instantly
 
 ## 👩‍💼 Admin Guide
 
@@ -235,6 +338,14 @@ Track and analyze your chatbot usage:
 - Switch between sessions seamlessly
 - View, export, and delete past sessions
 
+### SQL Database Integration
+- Direct natural language queries to SQL databases
+- Automatic SQL query generation from plain English questions
+- Support for complex joins and aggregations
+- Built-in safeguards against harmful queries
+- Explanation of query results in plain language
+- Support for visualization of query results
+
 ## ❓ Troubleshooting
 
 **Q: The chatbot doesn't understand my question**  
@@ -252,6 +363,12 @@ A: Complex questions analyzing large datasets may take longer. Try splitting you
 **Q: I lost my chat history**  
 A: Chat sessions are saved per user. Make sure you're logged in with the correct account and check the session dropdown.
 
+**Q: How do I switch from Google Sheets to SQL database?**  
+A: Update your `.env` file with the appropriate database credentials and set `USE_SQL_DATABASE=True`. Also, ensure your data is properly migrated to the database.
+
+**Q: The chatbot doesn't understand my database schema**  
+A: For complex database schemas, try providing more context in your questions by mentioning table names or key columns. You can also improve performance by ensuring proper indexing on frequently queried columns.
+
 ## 🔒 Security
 
 The application implements standard Django security practices:
@@ -261,6 +378,8 @@ The application implements standard Django security practices:
 - Content-Type sniffing prevention
 - X-Frame-Options set to DENY
 - Google Sheets API used with limited-scope credentials
+- SQL query sanitization to prevent injection attacks
+- Optional read-only database user for chatbot queries
 
 ## 🚀 Production Deployment
 
@@ -268,9 +387,13 @@ For production deployment, we recommend:
 1. Using Daphne or Uvicorn behind a reverse proxy like Nginx
 2. Enabling HTTPS for secure WebSocket connections (WSS)
 3. Setting up Redis as the channel layer backend
-4. Configuring proper database backends (PostgreSQL recommended)
-5. Implementing regular backups of the database
-6. Setting up monitoring for API usage and system performance
+4. **Configuring Production Database**:
+   - PostgreSQL or MySQL with connection pooling
+   - Regular database backups and point-in-time recovery
+   - Database replication for high availability
+   - Proper indexing for optimized query performance
+5. Implementing monitoring for API usage and system performance
+6. Setting up a content delivery network (CDN) for static assets
 
 
 ---
