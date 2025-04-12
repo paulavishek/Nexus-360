@@ -1,8 +1,10 @@
 # Project Management Chatbot
 
 <div align="center">
-  <img src="staticfiles/admin/img/icon-yes.svg" alt="PM Chatbot Logo" width="100" height="100">
-  <h3>Intelligent Project Data Assistant</h3>
+  <p align="center">
+  <img src="pm_chatbot_logo.png" alt="PM Chatbot Logo" width="300">
+</p>
+  <h3>Intelligent Project Assistant</h3>
   <p>Your AI-powered companion for project insights</p>
 </div>
 
@@ -270,9 +272,6 @@ For production deployment, we recommend:
 5. Implementing regular backups of the database
 6. Setting up monitoring for API usage and system performance
 
-## 📄 License
-
-[MIT License](LICENSE)
 
 ---
 
