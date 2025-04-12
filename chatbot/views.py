@@ -502,3 +502,80 @@ def reset_chat_history(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+@login_required(login_url='chatbot:login')
+def refresh_model_data(request):
+    """
+    API endpoint to get fresh model distribution data without reloading the page
+    """
+    try:
+        # Get date range for filtering
+        end_date = timezone.now().date()
+        start_date = end_date - datetime.timedelta(days=30)  # Last 30 days
+        
+        # Get model usage breakdown
+        model_usage = ChatMessage.objects.filter(
+            session__user=request.user,
+            role='assistant',
+            timestamp__date__gte=start_date,
+            timestamp__date__lte=end_date
+        ).values('model').annotate(count=Count('id'))
+        
+        # Format model usage for chart
+        model_labels = []
+        model_data = []
+        model_colors = []
+        for item in model_usage:
+            model_labels.append(item['model'] or 'Unknown')
+            model_data.append(item['count'])
+            if item['model'] == 'gemini':
+                model_colors.append('#4285F4')  # Google blue
+            elif item['model'] == 'openai':
+                model_colors.append('#10A37F')  # OpenAI green
+            elif item['model'] == 'openai-fallback':
+                model_colors.append('#F4B400')  # Yellow
+            else:
+                model_colors.append('#9E9E9E')  # Grey
+        
+        # Get total messages count for stats
+        total_messages = ChatMessage.objects.filter(
+            session__user=request.user,
+            timestamp__date__gte=start_date,
+            timestamp__date__lte=end_date
+        ).count()
+        
+        # Calculate percentages for the progress bar
+        gemini_value = 0
+        openai_value = 0
+        
+        for i, label in enumerate(model_labels):
+            if 'gemini' in label:
+                gemini_value = model_data[i]
+            elif 'openai' in label:
+                openai_value = model_data[i]
+        
+        total_value = gemini_value + openai_value
+        gemini_percent = 0
+        openai_percent = 0
+        
+        if total_value > 0:
+            gemini_percent = round((gemini_value / total_value) * 100)
+            openai_percent = round((openai_value / total_value) * 100)
+        
+        return JsonResponse({
+            'status': 'success',
+            'model_labels': model_labels,
+            'model_data': model_data,
+            'model_colors': model_colors,
+            'total_messages': total_messages,
+            'gemini_value': gemini_value,
+            'openai_value': openai_value,
+            'gemini_percent': gemini_percent,
+            'openai_percent': openai_percent,
+            'has_data': total_value > 0
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
