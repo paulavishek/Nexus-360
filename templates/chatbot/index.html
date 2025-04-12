@@ -1673,7 +1673,9 @@
         });
 
         // Send button click handler
-        sendBtn.on('click', sendMessage);
+        sendBtn.on('click', function() {
+            sendMessage();
+        });
 
         // Send message on Enter key
         userInput.on('keypress', function (e) {
