@@ -90,7 +90,7 @@ Organize your conversations by topic or project:
 4. **Delete Sessions**: Remove unwanted sessions using the trash icon
 
 ### Dashboard and Analytics
-
+ 
 Access insights about your chatbot usage:
 
 1. Navigate to the Dashboard tab to see usage statistics
