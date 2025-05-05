@@ -230,3 +230,8 @@ GOOGLE_SHEETS_CACHE_TIMEOUT = 300  # 5 minutes
 # Database query configuration
 USE_SQL_DATABASE = os.getenv('USE_SQL_DATABASE', 'False').lower() == 'true'  # Set to True to use SQL instead of Google Sheets
 SQL_QUERY_ROW_LIMIT = 1000  # Maximum number of rows to return for safety
+
+# Google Search API Configuration
+GOOGLE_SEARCH_API_KEY = os.environ.get('GOOGLE_SEARCH_API_KEY', '')
+GOOGLE_SEARCH_ENGINE_ID = os.environ.get('GOOGLE_SEARCH_ENGINE_ID', '')
+ENABLE_WEB_SEARCH = os.environ.get('ENABLE_WEB_SEARCH', 'True').lower() == 'true'

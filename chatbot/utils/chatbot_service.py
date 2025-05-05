@@ -4,6 +4,7 @@ from .openai_client import OpenAIClient
 from .gemini_client import GeminiClient
 from .google_sheets import GoogleSheetsClient
 from .sql_database_client import SQLDatabaseClient
+from .google_search import GoogleSearchClient
 from django.conf import settings
 import json
 import pandas as pd
@@ -17,6 +18,7 @@ class ChatbotService:
         self.openai_client = OpenAIClient()
         self.sheets_client = GoogleSheetsClient()
         self.sql_client = SQLDatabaseClient()
+        self.search_client = GoogleSearchClient()
         self.rate_limit_retries = 3
         self.rate_limit_cooldown = 5  # seconds
         
@@ -113,6 +115,10 @@ class ChatbotService:
         # Detect if this might be a query requiring SQL
         is_sql_query = self._is_sql_query(prompt)
         
+        # Detect if this might benefit from a web search
+        is_search_query = self._is_search_query(prompt)
+        search_context = ""
+        
         # Get database data to provide context for the chatbot
         try:
             database_data = self.get_database_data(use_cache=use_cache)
@@ -125,6 +131,15 @@ class ChatbotService:
                 'source': 'error',
                 'error': str(e)
             }
+            
+        # If this looks like a query that would benefit from web search, get search results
+        if is_search_query:
+            try:
+                print("Query might benefit from web search, fetching results...")
+                search_context = self._get_search_enhanced_context(prompt)
+            except Exception as e:
+                print(f"Error fetching search results: {e}")
+                # Continue without search results if there's an error
         
         # If this looks like a SQL query and we're using SQL database, try to execute it directly
         if is_sql_query and hasattr(settings, 'USE_SQL_DATABASE') and settings.USE_SQL_DATABASE:
@@ -216,18 +231,30 @@ class ChatbotService:
         if context:
             context_text += f"{context}\n"
             
+        # Add search results to context if available
+        if search_context:
+            context_text += f"\n{search_context}\n"
+            
         try:
             # Determine which model is currently active
             model_name = 'gemini'
             if isinstance(self.gemini_client, OpenAIClient):
                 model_name = 'openai'
             
+            # Modify prompt if search results were used
+            enhanced_prompt = prompt
+            if search_context:
+                # No need to modify the prompt, as we'll be passing the search results as context
+                source = f"{model_name}-with-search"
+            else:
+                source = model_name
+                
             # Use the selected model
-            response = self.gemini_client.get_chatbot_response(prompt, database_data, history, context_text)
+            response = self.gemini_client.get_chatbot_response(enhanced_prompt, database_data, history, context_text)
             
             return {
                 'response': response,
-                'source': model_name,
+                'source': source,
                 'sheet_name': sheet_name,
                 'error': None
             }
@@ -412,3 +439,71 @@ class ChatbotService:
             'source': 'error',
             'error': "Max retries exceeded"
         }
+    
+    def _is_search_query(self, prompt):
+        """
+        Determine if the prompt would benefit from a web search
+        
+        Args:
+            prompt (str): User query
+            
+        Returns:
+            bool: True if the query likely needs real-time or up-to-date information
+        """
+        prompt_lower = prompt.lower()
+        
+        # Keywords indicating need for recent information
+        search_indicators = [
+            "latest", "recent", "current", "news", "today", "yesterday", 
+            "this week", "this month", "this year", "update", "weather",
+            "happened", "trending", "stock", "price", "covid", "pandemic", 
+            "election", "released", "announced", "launch", "event", "2024", "2025"
+        ]
+        
+        # Question patterns that often need web search
+        question_patterns = [
+            "what is the latest", "how recent", "when did", "what happened",
+            "tell me about", "is there any news", "what's new", "what are some recent"
+        ]
+        
+        # Calculate a score based on presence of indicators
+        score = 0
+        for indicator in search_indicators:
+            if indicator in prompt_lower:
+                score += 1
+                
+        for pattern in question_patterns:
+            if pattern in prompt_lower:
+                score += 0.7
+                
+        # If database already has the information, we might not need a search
+        database_focused = "in the database" in prompt_lower or "in our data" in prompt_lower or "in the sheet" in prompt_lower
+        if database_focused:
+            score -= 1
+            
+        return score >= 1.0  # Threshold for when search is likely helpful
+        
+    def _get_search_enhanced_context(self, prompt, max_results=3):
+        """
+        Get web search results to enhance the context for an AI response
+        
+        Args:
+            prompt (str): User query
+            max_results (int): Maximum number of search results
+            
+        Returns:
+            str: Web search results formatted as context
+        """
+        try:
+            # Get search context
+            search_context = self.search_client.get_search_context(prompt, max_results=max_results)
+            
+            # Add footer/attribution
+            search_context += "\n\nPlease use this information to help answer the user's question accurately, " \
+                            "citing sources when appropriate. If the search results are not relevant, " \
+                            "rely on your existing knowledge instead."
+                            
+            return search_context
+        except Exception as e:
+            print(f"Error getting search context: {e}")
+            return ""
