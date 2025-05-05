@@ -498,10 +498,10 @@ class ChatbotService:
             # Get search context
             search_context = self.search_client.get_search_context(prompt, max_results=max_results)
             
-            # Add footer/attribution
-            search_context += "\n\nPlease use this information to help answer the user's question accurately, " \
-                            "citing sources when appropriate. If the search results are not relevant, " \
-                            "rely on your existing knowledge instead."
+            # Add instructions for the model
+            search_context += "\n\nPlease use this information to help answer the user's question accurately. " \
+                            "When citing sources, include the full source information including title and URL in parentheses. " \
+                            "If the search results are not relevant, rely on your existing knowledge instead."
                             
             return search_context
         except Exception as e:

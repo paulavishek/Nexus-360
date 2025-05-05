@@ -122,10 +122,19 @@ class GoogleSearchClient:
             context = "Here is information from recent web searches:\n\n"
             
             for i, result in enumerate(results):
-                context += f"[{i+1}] {result['title']}\n"
+                context += f"[Source {i+1}] {result['title']}\n"
                 context += f"URL: {result['link']}\n"
                 context += f"Excerpt: {result['snippet']}\n\n"
                 
+            # Add a section for source references
+            context += "\nWhen citing sources in your response, please include the full source information as follows:\n"
+            context += "For example, instead of just saying [Source 1], say [Source 1: Title of the Source (URL)].\n\n"
+            
+            # List sources for easy reference
+            context += "Sources for reference:\n"
+            for i, result in enumerate(results):
+                context += f"[Source {i+1}: {result['title']} ({result['link']})]\n"
+            
             return context
             
         except Exception as e:
