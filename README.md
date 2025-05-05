@@ -16,12 +16,14 @@
   - [Using the Chat Interface](#using-the-chat-interface)
   - [Model Selection](#model-selection)
   - [Chat Sessions](#chat-sessions)
+  - [Google Search Integration](#google-search-integration)
   - [Dashboard and Analytics](#dashboard-and-analytics)
   - [Sample Questions](#sample-questions)
 - [Technical Setup](#-technical-setup)
   - [Requirements](#requirements)
   - [Installation](#installation)
   - [Configuration](#configuration)
+  - [Google Search API Setup](#google-search-api-setup)
   - [Database Scaling](#database-scaling)
 - [Admin Guide](#-admin-guide)
 - [Advanced Features](#-advanced-features)
@@ -31,7 +33,7 @@
 
 ## 🔍 Overview
 
-The Project Management Chatbot is an intelligent assistant that connects to your data sources (Google Sheets or SQL databases) and provides natural language answers to your questions. Simply type your questions about projects, budgets, timelines, or team members, and get instant insights powered by OpenAI and Google Gemini AI models.
+The Project Management Chatbot is an intelligent assistant that connects to your data sources (Google Sheets or SQL databases) and provides natural language answers to your questions. Simply type your questions about projects, budgets, timelines, or team members, and get instant insights powered by OpenAI and Google Gemini AI models. With the new Google Search integration, the chatbot can now also provide up-to-date information from the web to complement its knowledge.
 
 This application brings your project data to life, allowing both technical and non-technical team members to access critical information through a simple conversation interface. No SQL queries or spreadsheet formulas needed!
 
@@ -43,6 +45,7 @@ This application brings your project data to life, allowing both technical and n
 - **Dual AI Models**: Choose between two powerful AI engines:
   - **Google Gemini**: Google's latest AI model for fast, efficient responses
   - **OpenAI**: Access OpenAI's powerful language models for rich, detailed answers
+- **Google Search Integration**: Access up-to-date information from the web to overcome AI knowledge cutoffs
 - **Natural Language Interface**: Ask questions in plain English about projects, budgets, timelines, resources
 - **Real-time Responses**: Get immediate answers through our WebSocket technology
 - **Multi-Sheet/Table Support**: Query across multiple data sources (Marketing, Development, etc.)
@@ -88,6 +91,28 @@ Organize your conversations by topic or project:
 3. **Rename Sessions**: Click the pencil icon next to a session name to rename it
 4. **Delete Sessions**: Remove unwanted sessions using the trash icon
 
+### Google Search Integration
+
+The chatbot can now access up-to-date information from the web for questions that require current knowledge:
+
+1. **Automatic Detection**: The system automatically detects when a question might benefit from web search
+2. **Seamless Integration**: When the chatbot uses web search data, you'll see source citations in the response
+3. **Source Citations**: Responses using web data include links to the original sources [Source: Example Website (URL)]
+4. **Toggle Feature**: Administrators can enable/disable this feature through the .env settings
+
+To use the Google Search feature:
+
+1. Simply ask questions that might require up-to-date information, such as:
+   - "What are the latest project management trends in 2025?"
+   - "How are companies currently handling remote team collaboration?"
+   - "What's the current best practice for agile sprint planning?"
+
+2. The chatbot will automatically:
+   - Detect that your question needs recent information
+   - Search the web for relevant, current data
+   - Provide an answer that combines its AI knowledge with web search results
+   - Cite sources with links so you can verify the information
+
 ### Dashboard and Analytics
  
 Access insights about your chatbot usage:
@@ -129,6 +154,15 @@ Here are some examples of questions you can ask the chatbot:
 - "Which department has the most active projects?"
 - "Show me all projects related to website development across all departments"
 
+#### Web Search Enhanced Questions (using Google Search API)
+- "What are the latest project management methodologies in 2025?"
+- "How do current economic trends affect project budgeting strategies?"
+- "What are the recent changes to agile frameworks that we should consider?"
+- "Tell me about the newest project management tools released this year"
+- "What best practices have emerged for managing remote project teams?"
+- "What were the outcomes of the recent PMI conference?"
+- "How are companies currently handling AI integration in project workflows?"
+
 #### SQL Database Queries (when using MySQL/PostgreSQL)
 - "Show me the relationship between project budget and timeline delays"
 - "Calculate the average completion rate across all teams"
@@ -145,6 +179,7 @@ Here are some examples of questions you can ask the chatbot:
 - OpenAI API key
 - Google Gemini API key
 - Google Sheets API credentials
+- Google Search API credentials
 - MySQL or PostgreSQL (for scaled deployments)
 
 ### Installation
@@ -186,6 +221,11 @@ Here are some examples of questions you can ask the chatbot:
    # Optional: Additional sheets in format "name1:id1,name2:id2"
    ADDITIONAL_SHEETS=Marketing:sheet_id_1,Development:sheet_id_2
    
+   # Google Search API configuration
+   GOOGLE_SEARCH_API_KEY=your_google_search_api_key_here
+   GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
+   ENABLE_WEB_SEARCH=True
+   
    # Database configuration (for scaling)
    DB_TYPE=sqlite  # Options: sqlite, mysql, postgresql
    # DB_NAME=your_db_name
@@ -220,6 +260,55 @@ Here are some examples of questions you can ask the chatbot:
    ```
 
 5. Access the application at http://localhost:8000
+
+### Google Search API Setup
+
+To enable the Google Search integration, follow these steps:
+
+1. **Create a Google Cloud Project** (or use your existing one):
+   - Go to the [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select your existing project
+
+2. **Enable the Custom Search API**:
+   - In the Google Cloud Console, go to "APIs & Services" > "Library"
+   - Search for "Custom Search API" and click on it
+   - Click "Enable" to activate the API for your project
+
+3. **Create API Credentials**:
+   - Go to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" and select "API Key"
+   - Copy the generated API key
+
+4. **Create a Programmable Search Engine**:
+   - Go to [Programmable Search Engine](https://programmablesearchengine.google.com/)
+   - Click "Add" to create a new search engine
+   - Name your search engine (e.g., "PM_ChatBot")
+   - Select "Search the entire web" (recommended for general knowledge)
+   - Toggle "SafeSearch" ON (recommended)
+   - Toggle "Image search" OFF (unless you need image results)
+   - Click "Create"
+   - After creation, copy your Search Engine ID (a 16-digit code like "16b0e4815604a47f1")
+
+5. **Add Credentials to Environment Variables**:
+   - Open your `.env` file
+   - Add or update the following variables:
+     ```
+     GOOGLE_SEARCH_API_KEY=your_copied_api_key_here
+     GOOGLE_SEARCH_ENGINE_ID=your_copied_search_engine_id_here
+     ENABLE_WEB_SEARCH=True
+     ```
+
+6. **Restart Your Application**:
+   - Restart your Django server for the changes to take effect
+
+7. **Test the Integration**:
+   - Ask a question that requires current information like "What are the latest project management trends in 2025?"
+   - The response should include web search results with source citations
+
+**Important Notes**:
+- The free tier of Google Custom Search API allows 100 queries per day
+- After exceeding the free tier, you will be charged per query (check Google Cloud pricing)
+- The system includes retry logic and rate limiting to help manage API usage
 
 ### Database Scaling
 
@@ -312,6 +401,7 @@ As an administrator, you have additional capabilities:
 3. **Database Management**: Directly access and update the Google Sheets connection
 4. **Analytics Access**: View detailed analytics about system usage
 5. **Custom Setup**: Configure additional sheets and data connections
+6. **Google Search Configuration**: Enable/disable web search and monitor API usage
 
 ## 🔧 Advanced Features
 
@@ -325,6 +415,15 @@ The application uses Django Channels and WebSockets to provide real-time chat fu
 Dynamically switch between AI models:
 - Google Gemini 1.5-Flash: Fast and efficient for most queries
 - OpenAI GPT-4o-mini: Excellent for complex analytical questions
+
+### Google Search Integration
+The chatbot can now access recent information from the web:
+- **Automatic Detection**: System detects when a question might benefit from web search
+- **Source Transparency**: All web-sourced information includes citations with links
+- **Knowledge Extension**: Extends the AI models beyond their knowledge cutoff dates
+- **Configurable**: Easily enable/disable via environment variables
+- **Smart Integration**: Results from web searches are seamlessly blended with AI responses
+- **Rate Limiting**: Built-in handling of API rate limits to prevent overages
 
 ### Dashboard Analytics
 Track and analyze your chatbot usage:
@@ -351,13 +450,22 @@ Track and analyze your chatbot usage:
 A: Try rephrasing your question to be more specific. Include project names, dates, or specific terms that match your Google Sheets data.
 
 **Q: I'm seeing an error about API limits**  
-A: This happens when you've reached the usage limits for the AI models. Wait a few minutes before trying again or switch to the other model.
+A: This happens when you've reached the usage limits for the AI models or Google Search API. Wait a few minutes before trying again or switch to the other model.
 
 **Q: The data seems outdated**  
 A: Click the refresh icon before asking your question to get the latest data from Google Sheets.
 
+**Q: The web search isn't providing current information**  
+A: Make sure your Google Search API is correctly configured in the .env file and that you haven't exceeded the daily quota (100 queries for free tier).
+
+**Q: The chatbot mentions sources but doesn't include the full source information**  
+A: Restart the application after configuring the Google Search API. This ensures the improved source citation format is applied.
+
+**Q: How do I disable the web search feature?**  
+A: Set `ENABLE_WEB_SEARCH=False` in your .env file and restart the application.
+
 **Q: The chatbot is slow to respond**  
-A: Complex questions analyzing large datasets may take longer. Try splitting your question into smaller parts.
+A: Complex questions analyzing large datasets or requiring web searches may take longer. Try splitting your question into smaller parts.
 
 **Q: I lost my chat history**  
 A: Chat sessions are saved per user. Make sure you're logged in with the correct account and check the session dropdown.
@@ -377,6 +485,7 @@ The application implements standard Django security practices:
 - Content-Type sniffing prevention
 - X-Frame-Options set to DENY
 - Google Sheets API used with limited-scope credentials
+- Google Search API with content filtering enabled
 - SQL query sanitization to prevent injection attacks
 - Optional read-only database user for chatbot queries
 
