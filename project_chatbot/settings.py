@@ -75,21 +75,28 @@ WSGI_APPLICATION = 'project_chatbot.wsgi.application'
 ASGI_APPLICATION = 'project_chatbot.asgi.application'
 
 # Channel layers configuration for WebSockets
+# Get Redis configuration from environment if available
+REDIS_HOST = os.getenv('REDIS_HOST', '127.0.0.1')
+REDIS_PORT = os.getenv('REDIS_PORT', '6379')
+
+# Use in-memory channel layer for both development and small-scale deployments
+# This works well for Cloud Run instances with minimal traffic
+# Switch to Redis for high-traffic scenarios or multiple instances
 CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],
-        },
-    },
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
 }
 
-# For local development without Redis, use the in-memory channel layer
-if DEBUG:
+# If Redis is configured, use Redis channel layer instead
+if REDIS_HOST and REDIS_PORT and not (REDIS_HOST == '127.0.0.1' and DEBUG):
     CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels.layers.InMemoryChannelLayer"
-        }
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [(REDIS_HOST, int(REDIS_PORT))],
+            },
+        },
     }
 
 # Database

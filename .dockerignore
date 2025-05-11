@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+.github
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+.env
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Local development specific
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Database
+db.sqlite3
+
+# Logs
+*.log
+
+# Development-specific files
+*.md
+LICENSE
+README.md
+CONTRIBUTING.md
+
+# Exclude local media files (if any)
+media/
+
+# Don't ignore these files
+!.env.example
