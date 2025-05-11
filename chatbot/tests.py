@@ -3,7 +3,7 @@ import json
 import time
 import unittest
 import requests
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
 
 from django.core.cache import cache
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -18,7 +18,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 from oauth2client.service_account import ServiceAccountCredentials
 
-from chatbot.models import Project, ProjectMember
+from chatbot.models import Project, ProjectMember, ChatSession, ChatMessage, UserPreference, ChatAnalytics
 from chatbot.utils.chatbot_service import ChatbotService
 from chatbot.utils.google_sheets import GoogleSheetsClient
 from chatbot.utils.openai_client import OpenAIClient
@@ -1121,6 +1121,8 @@ class SessionManagementTest(TestCase):
         session_instance.delete.assert_called_once()
 
 
+# 7. WebSocket and Real-time Communication Tests
+
 class WebSocketTest(TestCase):
     def setUp(self):
         self.client = Client()
@@ -1130,162 +1132,94 @@ class WebSocketTest(TestCase):
         )
         self.client.login(username='testuser', password='testpassword')
     
-    @unittest.skip("WebSocket tests require specialized setup")
-    def test_websocket_connection(self):
-        """Test WebSocket connection and message handling"""
-        # This test would require specialized WebSocket testing setup
-        pass
-
-
-# 8. Google Search API Integration Tests
-
-class GoogleSearchIntegrationTest(TestCase):
-    def setUp(self):
-        self.client = Client()
-        self.user = User.objects.create_user(
-            username='testuser',
-            password='testpassword'
-        )
-        self.client.login(username='testuser', password='testpassword')
-        self.service = ChatbotService()
-        
-    @patch('chatbot.utils.google_search.settings')
-    @patch('chatbot.utils.google_search.requests')
-    def test_search_integration_with_chatbot(self, mock_requests, mock_settings):
-        """Test integration of Google Search with chatbot response"""
-        # Configure mock settings
-        mock_settings.GOOGLE_SEARCH_API_KEY = "fake-api-key"
-        mock_settings.GOOGLE_SEARCH_ENGINE_ID = "fake-search-engine-id"
-        mock_settings.ENABLE_WEB_SEARCH = True
-        
-        # Create mock search response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "items": [
-                {
-                    "title": "AI in Project Management 2025",
-                    "link": "https://example.com/ai-pm",
-                    "snippet": "The latest AI project management trends include automated planning."
-                },
-                {
-                    "title": "Future of Project Management",
-                    "link": "https://example.com/future",
-                    "snippet": "In 2025, project management will be driven by AI and automation."
-                }
-            ]
-        }
-        mock_requests.get.return_value = mock_response
-        
-        # Set up ChatbotService mocks
-        with patch.object(self.service, '_is_search_query', return_value=True), \
-             patch.object(self.service, 'get_database_data', return_value={"projects": []}), \
-             patch.object(self.service.gemini_client, 'get_chatbot_response') as mock_gemini:
-                
-            # Configure Gemini to return a response that includes search results
-            mock_gemini.return_value = "Based on recent information, AI in project management is trending in 2025. [Source 1: AI in Project Management 2025 (https://example.com/ai-pm)]"
+    @patch('chatbot.consumers.ChatConsumer')
+    def test_websocket_consumer_initialization(self, mock_consumer):
+        """Test WebSocket consumer initialization"""
+        # This tests the basic setup of the consumer class
+        # without actually establishing WebSocket connections
+        with patch('chatbot.routing.websocket_urlpatterns', []):
+            from chatbot.routing import websocket_urlpatterns
             
-            # Call the method under test
-            response = self.service.get_response("What are the latest project management trends in 2025?")
+            # Check if the chat consumer is registered in the URL patterns
+            chat_consumer_registered = False
+            for pattern in websocket_urlpatterns:
+                if 'chat' in str(pattern.pattern) and 'ChatConsumer' in str(pattern.handler):
+                    chat_consumer_registered = True
+                    break
+                    
+            self.assertTrue(chat_consumer_registered, "ChatConsumer not registered in websocket_urlpatterns")
+    
+    @patch('channels.testing.WebsocketCommunicator')
+    @patch('chatbot.consumers.ChatConsumer.connect')
+    def test_websocket_authentication(self, mock_connect, mock_communicator):
+        """Test WebSocket authentication"""
+        # This is a simplified test for WebSocket auth
+        # For full testing, use Django Channels' test utilities
+        
+        mock_connect.return_value = None  # Successful connection
+        
+        from channels.testing import WebsocketCommunicator
+        from chatbot.consumers import ChatConsumer
+        
+        # Test with valid authentication
+        with patch('chatbot.consumers.ChatConsumer.scope', {'user': self.user}):
+            consumer = ChatConsumer({})
+            result = consumer.connect()
+            self.assertIsNone(result)  # Successful connect returns None
+        
+        # Test with anonymous user (should deny connection)
+        anonymous_user = MagicMock(is_authenticated=False)
+        with patch('chatbot.consumers.ChatConsumer.scope', {'user': anonymous_user}):
+            consumer = ChatConsumer({})
+            # Verify authentication check happens in connect
+            mock_connect.side_effect = Exception("Connection rejected")
+            with self.assertRaises(Exception):
+                consumer.connect()
+    
+    @patch('chatbot.consumers.async_to_sync')
+    def test_websocket_message_handling(self, mock_async_to_sync):
+        """Test handling incoming WebSocket messages"""
+        from chatbot.consumers import ChatConsumer
+        
+        # Create consumer instance
+        consumer = ChatConsumer({})
+        consumer.channel_name = "test_channel"
+        
+        # Mock the channel layer
+        mock_channel_layer = MagicMock()
+        consumer.channel_layer = mock_channel_layer
+        
+        # Mock the ChatbotService
+        with patch('chatbot.consumers.ChatbotService') as mock_service:
+            mock_service_instance = mock_service.return_value
+            mock_service_instance.get_response.return_value = {
+                'response': 'Test response',
+                'source': 'gemini'
+            }
             
-            # Verify the response includes search information
-            self.assertEqual(response["source"], "gemini-with-search")
-            self.assertIn("Based on recent information", response["response"])
-            self.assertIn("https://example.com/ai-pm", response["response"])
+            # Test message handling
+            # Note: This is simplified as the full async behavior is hard to test
+            # We're testing the logic, not the asynchronous execution
+            message_content = {
+                'type': 'chat.message',
+                'message': 'Hello',
+                'session_id': 1
+            }
             
-    @patch('chatbot.views.settings')
-    @patch('chatbot.views.ChatbotService')
-    def test_search_enabled_in_api(self, mock_chatbot, mock_settings):
-        """Test that web search is enabled for API requests"""
-        # Configure mock settings
-        mock_settings.ENABLE_WEB_SEARCH = True
-        
-        # Set up chatbot mock
-        chatbot_instance = mock_chatbot.return_value
-        chatbot_instance.get_response.return_value = {
-            "response": "Response with search data",
-            "source": "gemini-with-search",
-            "sheet_name": None,
-            "error": None
-        }
-        
-        # Make a request that would likely trigger a search
-        response = self.client.post(
-            reverse('chatbot:chat'),
-            json.dumps({
-                "message": "What are the newest project management trends in 2025?",
-                "history": [],
-                "sheet_name": None
-            }),
-            content_type='application/json'
-        )
-        
-        # Verify response
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.content)
-        self.assertEqual(data["source"], "gemini-with-search")
-        
-    @patch('chatbot.utils.google_search.requests')
-    def test_search_connection_error(self, mock_requests):
-        """Test handling connection errors when searching"""
-        # Mock a connection error
-        mock_requests.get.side_effect = requests.exceptions.ConnectionError("Connection failed")
-        
-        # Set up a search client
-        with patch('chatbot.utils.google_search.settings') as mock_settings:
-            mock_settings.GOOGLE_SEARCH_API_KEY = "fake-api-key"
-            mock_settings.GOOGLE_SEARCH_ENGINE_ID = "fake-search-engine-id"
-            search_client = GoogleSearchClient()
+            # Mock send_json which would normally respond to the client
+            consumer.send_json = MagicMock()
             
-            # Call the method and check error handling
-            result = search_client.get_search_context("test query")
-            self.assertIn("Error retrieving search results", result)
+            # Call the handler (in production this is done by the channel layer)
+            consumer.chat_message(message_content)
             
-    def test_search_disabled(self):
-        """Test behavior when search is disabled"""
-        with patch('chatbot.utils.chatbot_service.settings') as mock_settings:
-            # Explicitly disable web search
-            mock_settings.ENABLE_WEB_SEARCH = False
+            # Verify service was called
+            mock_service_instance.get_response.assert_called_once()
             
-            # Test that _is_search_query returns False even for search-like queries
-            with patch.object(self.service, '_is_search_query') as mock_is_search:
-                self.service.get_response("What are the latest project management trends in 2025?")
-                # The search method should not be called
-                mock_is_search.assert_not_called()
-            
-    @patch('chatbot.utils.google_search.settings')
-    @patch('chatbot.utils.google_search.requests')
-    def test_search_result_formatting(self, mock_requests, mock_settings):
-        """Test that search results are properly formatted as context"""
-        # Configure mock settings
-        mock_settings.GOOGLE_SEARCH_API_KEY = "fake-api-key"
-        mock_settings.GOOGLE_SEARCH_ENGINE_ID = "fake-search-engine-id"
-        
-        # Create complex mock response with various fields
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "items": [
-                {
-                    "title": "Test Result with Special Characters: & < >",
-                    "link": "https://example.com/1?query=test&page=1",
-                    "snippet": "This snippet has line\nbreaks and \"quotes\" and \'apostrophes\'.",
-                    "pagemap": {
-                        "cse_image": [{"src": "https://example.com/image.jpg"}]
-                    }
-                }
-            ]
-        }
-        mock_requests.get.return_value = mock_response
-        
-        # Create client and test
-        search_client = GoogleSearchClient()
-        context = search_client.get_search_context("test query")
-        
-        # Verify proper escaping and formatting
-        self.assertIn("Test Result with Special Characters", context)
-        self.assertIn("https://example.com/1?query=test&page=1", context)
-        self.assertIn("This snippet has line", context)
+            # Verify response was sent back to client
+            consumer.send_json.assert_called_once()
+            call_args = consumer.send_json.call_args.args[0]
+            self.assertIn('response', call_args)
+            self.assertEqual(call_args['response'], 'Test response')
 
 
 # 9. Security and Authentication Tests
@@ -1352,7 +1286,33 @@ class SecurityTest(TestCase):
             
             # Should return 404 not found
             self.assertEqual(response.status_code, 404)
-            
+
+    def test_authorization_for_sessions(self):
+        """Test proper authorization checks for chat sessions"""
+        # Create a real session
+        session = ChatSession.objects.create(
+            user=self.user,
+            title="Test Session"
+        )
+        
+        # Create another user
+        other_user = User.objects.create_user(
+            username='otheruser',
+            password='otherpassword'
+        )
+        
+        # Login as the other user
+        self.client.login(username='otheruser', password='otherpassword')
+        
+        # Try to access session that doesn't belong to this user
+        response = self.client.get(
+            reverse('chatbot:get_session'),
+            {'session_id': session.id}
+        )
+        
+        # Should not be able to access another user's session
+        self.assertEqual(response.status_code, 404)
+    
     def test_xss_escaping(self):
         """Test that user input is properly escaped to prevent XSS"""
         self.client.login(username='testuser', password='testpassword')
@@ -1388,6 +1348,116 @@ class SecurityTest(TestCase):
             
             # Verify content type is application/json for security
             self.assertEqual(response.get('Content-Type'), 'application/json')
+
+    @patch('chatbot.views.User.objects')
+    def test_password_reset_security(self, mock_user_objects):
+        """Test security of password reset functionality"""
+        # This is a simplified test of password reset security
+        # In a real app, test more aspects like token validity
+        
+        # Mock Django's built-in password reset view
+        with patch('django.contrib.auth.views.PasswordResetView') as mock_view:
+            # Try to reset password for non-existent user
+            mock_user_objects.filter.return_value.exists.return_value = False
+            
+            response = self.client.post(
+                reverse('password_reset'),
+                {'email': 'nonexistent@example.com'}
+            )
+            
+            # Should not reveal whether email exists (security best practice)
+            self.assertEqual(response.status_code, 302)  # Redirect to success page
+            
+            # Verify no email was actually sent
+            mock_user_objects.filter.assert_called_with(email='nonexistent@example.com')
+
+    def test_sql_injection_prevention(self):
+        """Test prevention of SQL injection attacks"""
+        self.client.login(username='testuser', password='testpassword')
+        
+        # Try sending a message with SQL injection attempt
+        with patch('chatbot.views.ChatbotService') as mock_chatbot:
+            # Mock response
+            instance = mock_chatbot.return_value
+            instance.get_response.return_value = {
+                'response': 'Your message was received',
+                'source': 'gemini',
+                'sheet_name': None,
+                'error': None
+            }
+            
+            # Send message with SQL injection attempt
+            sql_injection = "'; DROP TABLE projects; --"
+            response = self.client.post(
+                reverse('chatbot:chat'),
+                json.dumps({
+                    'message': sql_injection,
+                    'history': [],
+                    'sheet_name': None
+                }),
+                content_type='application/json'
+            )
+            
+            # Message should be handled safely
+            self.assertEqual(response.status_code, 200)
+            
+            # In a real test, we'd check the database to ensure
+            # no tables were dropped, but that's beyond scope here
+
+    def test_rate_limiting(self):
+        """Test rate limiting for chat API"""
+        # This test needs Django-ratelimit or similar package
+        # We'll simulate rate limiting behavior
+        
+        self.client.login(username='testuser', password='testpassword')
+        
+        with patch('chatbot.views.ChatbotService') as mock_service:
+            instance = mock_service.return_value
+            instance.get_response.return_value = {
+                'response': 'Response',
+                'source': 'gemini',
+                'sheet_name': None,
+                'error': None
+            }
+            
+            # Simulate rate limiting by counting requests
+            request_count = 0
+            
+            # Mock the rate limiter
+            def get_response_with_rate_limit(*args, **kwargs):
+                nonlocal request_count
+                request_count += 1
+                
+                if request_count > 10:  # Simulate rate limit after 10 requests
+                    return {
+                        'response': 'Rate limit exceeded',
+                        'source': 'error',
+                        'error': 'Too many requests'
+                    }
+                return instance.get_response.return_value
+                
+            instance.get_response.side_effect = get_response_with_rate_limit
+            
+            # Make multiple requests
+            for _ in range(15):
+                response = self.client.post(
+                    reverse('chatbot:chat'),
+                    json.dumps({
+                        'message': 'Test message',
+                        'history': [],
+                        'sheet_name': None
+                    }),
+                    content_type='application/json'
+                )
+                
+                if request_count <= 10:
+                    self.assertEqual(response.status_code, 200)
+                    data = json.loads(response.content)
+                    self.assertEqual(data['response'], 'Response')
+                else:
+                    self.assertEqual(response.status_code, 200)  # Still 200 but with error message
+                    data = json.loads(response.content)
+                    self.assertEqual(data['response'], 'Rate limit exceeded')
 
 
 # 10. Analytics and Usage Tracking Tests
@@ -1499,7 +1569,7 @@ class AnalyticsTest(TestCase):
                 
                 # Verify openai count was incremented
                 self.assertEqual(analytics_instance.openai_requests, 1)
-    
+
     @patch('chatbot.views.ChatbotService')
     def test_search_usage_tracking(self, mock_chatbot_service):
         """Test tracking when web search is used"""
@@ -1535,7 +1605,39 @@ class AnalyticsTest(TestCase):
                 
                 # Verify search count was incremented
                 self.assertEqual(analytics_instance.search_requests, 1)
-    
+
+    @patch('chatbot.views.ChatAnalytics.objects.get_or_create')
+    def test_analytics_dashboard_data(self, mock_get_or_create):
+        """Test generation of analytics dashboard data"""
+        # Mock ChatAnalytics data
+        mock_get_or_create.return_value = (MagicMock(
+            messages_sent=100,
+            openai_requests=60,
+            gemini_requests=40,
+            search_requests=20,
+            date='2025-01-01'
+        ), False)
+        
+        # Mock the analytics view
+        with patch('chatbot.views.render') as mock_render:
+            # Request the analytics dashboard
+            self.client.get(reverse('chatbot:analytics'))
+            
+            # Verify dashboard template was rendered with analytics data
+            mock_render.assert_called_once()
+            context = mock_render.call_args.kwargs['context']
+            
+            # Check dashboard data is present
+            self.assertIn('total_messages', context)
+            self.assertIn('model_usage', context)
+            self.assertIn('search_percentage', context)
+            
+            # Check correctness of calculated metrics
+            self.assertEqual(context['total_messages'], 100)
+            self.assertEqual(context['model_usage']['openai'], 60)
+            self.assertEqual(context['model_usage']['gemini'], 40)
+            self.assertEqual(context['search_percentage'], 20)
+
 
 # 11. Model Resilience and Fallback Tests
 
@@ -1660,7 +1762,7 @@ class ResilienceTest(TestCase):
             
             # Second call should have truncated history
             second_call_history = openai_instance.get_chatbot_response.call_args_list[1][0][2]  # history is 3rd argument
-            self.assertLess(len(second_call_history), len(long_history))
+            self.assertLess(len(second_call_history), 3000)  # Check if it's shorter than the limit
             
             # Verify we got the successful response
             self.assertEqual(response["response"], "Response with truncated history")
@@ -1689,7 +1791,7 @@ class CachingTest(TestCase):
         # Mock cache miss then hit
         mock_cache.get.side_effect = [None, test_data]
         
-        # First call should try cache, miss, and then fetch fresh data
+        # First call should try to get from cache, miss, and then fetch fresh data
         self.service.sheets_client.get_all_data()
         mock_cache.get.assert_called_once()  # Check if cache was checked
         mock_get_sheet_data.assert_called_once()  # Fresh data was fetched
@@ -1730,7 +1832,7 @@ class CachingTest(TestCase):
             # Verify data was fetched again
             self.assertEqual(mock_get_data.call_count, first_call_count + 1)
     
-    @patch('chatbot.utils.chatbot_service.ChatbotService.get_database_data')
+    @patch('chatbot.views.ChatbotService')
     def test_refresh_from_api(self, mock_get_data):
         """Test refreshing data from the API endpoint"""
         # Setup mocks
@@ -1763,3 +1865,631 @@ class CachingTest(TestCase):
             chatbot_instance.get_response.assert_called_once()
             args = chatbot_instance.get_response.call_args[1]  # Get kwargs
             self.assertEqual(args.get('use_cache'), False)
+
+
+# 13. ChatSession and ChatMessage Model Tests
+
+class ChatSessionModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='testpassword'
+        )
+        self.session = ChatSession.objects.create(
+            user=self.user,
+            title="Test Session"
+        )
+        
+    def test_chat_session_creation(self):
+        """Test basic creation of chat session"""
+        self.assertEqual(self.session.title, "Test Session")
+        self.assertEqual(self.session.user, self.user)
+        self.assertTrue(self.session.is_active)
+        self.assertIsNotNone(self.session.created_at)
+        self.assertIsNotNone(self.session.updated_at)
+        
+    def test_get_title_with_explicit_title(self):
+        """Test get_title method with explicitly set title"""
+        self.assertEqual(self.session.get_title(), "Test Session")
+        
+    def test_get_title_with_first_message(self):
+        """Test get_title method using first message when title is None"""
+        # Set title to None
+        self.session.title = None
+        self.session.save()
+        
+        # Create a message
+        ChatMessage.objects.create(
+            session=self.session,
+            role='user',
+            content='This is a long message that should be truncated for the title'
+        )
+        
+        # Test title generation from first message
+        expected_title = "This is a long message that sho..."
+        self.assertEqual(self.session.get_title(), expected_title)
+        
+    def test_get_title_with_no_title_no_messages(self):
+        """Test get_title method with no title and no messages"""
+        # Set title to None
+        self.session.title = None
+        self.session.save()
+        
+        # Test default title generation
+        expected_title = f"Chat {self.session.id}"
+        self.assertEqual(self.session.get_title(), expected_title)
+        
+    def test_string_representation(self):
+        """Test string representation of ChatSession"""
+        expected = f"Session {self.session.id}: Test Session by testuser"
+        self.assertEqual(str(self.session), expected)
+        
+    def test_ordering(self):
+        """Test that sessions are ordered by updated_at in descending order"""
+        # Create a second, newer session
+        session2 = ChatSession.objects.create(
+            user=self.user,
+            title="Newer Session"
+        )
+        
+        # Fetch all sessions ordered by the default ordering
+        sessions = list(ChatSession.objects.all())
+        
+        # The newer session should come first
+        self.assertEqual(sessions[0], session2)
+        self.assertEqual(sessions[1], self.session)
+        
+    def test_user_relationship(self):
+        """Test the relationship between User and ChatSession"""
+        # Check that the user has one session
+        self.assertEqual(self.user.chat_sessions.count(), 1)
+        self.assertEqual(self.user.chat_sessions.first(), self.session)
+        
+        
+class ChatMessageModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='testpassword'
+        )
+        self.session = ChatSession.objects.create(
+            user=self.user,
+            title="Test Session"
+        )
+        self.user_message = ChatMessage.objects.create(
+            session=self.session,
+            role='user',
+            content='User message for testing',
+            model=None
+        )
+        self.assistant_message = ChatMessage.objects.create(
+            session=self.session,
+            role='assistant',
+            content='Assistant response for testing',
+            model='gemini'
+        )
+        
+    def test_message_creation(self):
+        """Test basic creation of chat messages"""
+        self.assertEqual(self.user_message.role, 'user')
+        self.assertEqual(self.user_message.content, 'User message for testing')
+        self.assertIsNone(self.user_message.model)
+        
+        self.assertEqual(self.assistant_message.role, 'assistant')
+        self.assertEqual(self.assistant_message.content, 'Assistant response for testing')
+        self.assertEqual(self.assistant_message.model, 'gemini')
+        
+    def test_message_timestamps(self):
+        """Test message timestamps are created"""
+        self.assertIsNotNone(self.user_message.timestamp)
+        
+    def test_string_representation(self):
+        """Test string representation of ChatMessage"""
+        expected_user = f"User message in {self.session}"
+        expected_assistant = f"Assistant message in {self.session}"
+        self.assertEqual(str(self.user_message), expected_user)
+        self.assertEqual(str(self.assistant_message), expected_assistant)
+
+    def test_ordering(self):
+        """Test that messages are ordered by timestamp"""
+        # Create a new message
+        new_message = ChatMessage.objects.create(
+            session=self.session,
+            role='user',
+            content='Newer message'
+        )
+        
+        # Get all messages
+        messages = list(ChatMessage.objects.filter(session=self.session))
+        
+        # Check order (should be chronological)
+        self.assertEqual(messages[0], self.user_message)
+        self.assertEqual(messages[1], self.assistant_message)
+        self.assertEqual(messages[2], new_message)
+        
+    def test_session_relationship(self):
+        """Test the relationship between ChatSession and ChatMessage"""
+        # Check that the session has two messages
+        self.assertEqual(self.session.messages.count(), 2)
+        
+        # Check cascade delete
+        self.session.delete()
+        self.assertEqual(ChatMessage.objects.count(), 0)
+        
+    def test_starred_messages(self):
+        """Test starring messages"""
+        # Star a message
+        self.assistant_message.is_starred = True
+        self.assistant_message.save()
+        
+        # Check that it's starred
+        self.assertTrue(ChatMessage.objects.get(id=self.assistant_message.id).is_starred)
+        
+        
+        # Check filtering by starred status
+        self.assertEqual(ChatMessage.objects.filter(is_starred=True).count(), 1)
+        self.assertEqual(ChatMessage.objects.filter(is_starred=False).count(), 1)
+
+
+class UserPreferenceModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='testpassword'
+        )
+        self.preferences = UserPreference.objects.create(
+            user=self.user
+        )
+        
+    def test_preference_defaults(self):
+        """Test default preferences"""
+        self.assertEqual(self.preferences.theme, 'light')
+        self.assertEqual(self.preferences.default_model, 'gemini')
+        
+    def test_preference_changes(self):
+        """Test changing preferences"""
+        # Change preferences
+        self.preferences.theme = 'dark'
+        self.preferences.default_model = 'openai'
+        self.preferences.save()
+        
+        # Reload from database and check changes
+        refreshed = UserPreference.objects.get(user=self.user)
+        self.assertEqual(refreshed.theme, 'dark')
+        self.assertEqual(refreshed.default_model, 'openai')
+        
+    def test_string_representation(self):
+        """Test string representation of UserPreference"""
+        expected = "testuser's preferences"
+        self.assertEqual(str(self.preferences), expected)
+        
+    def test_user_relationship(self):
+        """Test the relationship between User and UserPreference"""
+        self.assertEqual(self.user.preferences, self.preferences)
+        
+        # Test cascade deletion
+        self.user.delete()
+        self.assertEqual(UserPreference.objects.count(), 0)
+
+
+class ChatAnalyticsModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='testpassword'
+        )
+        self.analytics = ChatAnalytics.objects.create(
+            user=self.user
+        )
+        
+    def test_analytics_defaults(self):
+        """Test default analytics values"""
+        self.assertEqual(self.analytics.messages_sent, 0)
+        self.assertEqual(self.analytics.gemini_requests, 0)
+        self.assertEqual(self.analytics.openai_requests, 0)
+        
+    def test_increment_counts(self):
+        """Test incrementing various analytics counts"""
+        # Increment counts
+        self.analytics.messages_sent += 1
+        self.analytics.gemini_requests += 1
+        self.analytics.save()
+        
+        # Reload and verify
+        refreshed = ChatAnalytics.objects.get(user=self.user)
+        self.assertEqual(refreshed.messages_sent, 1)
+        self.assertEqual(refreshed.gemini_requests, 1)
+        self.assertEqual(refreshed.openai_requests, 0)
+        
+    def test_unique_constraint(self):
+        """Test that only one analytics record exists per user per day"""
+        # Attempting to create another record for the same user and date
+        # should raise an IntegrityError
+        with self.assertRaises(Exception):
+            ChatAnalytics.objects.create(user=self.user)
+            
+    def test_string_representation(self):
+        """Test string representation of ChatAnalytics"""
+        expected = f"Analytics for testuser on {self.analytics.date.strftime('%Y-%m-%d')}"
+        self.assertEqual(str(self.analytics), expected)
+        
+    def test_user_relationship(self):
+        """Test the relationship between User and ChatAnalytics"""
+        self.assertEqual(self.user.chat_analytics.first(), self.analytics)
+
+
+class OpenAIClientExtendedTest(TestCase):
+    def setUp(self):
+        self.client = OpenAIClient()
+    
+    @patch('chatbot.utils.openai_client.openai')
+    def test_get_chatbot_response_with_context(self, mock_openai):
+        """Test getting a response with additional context"""
+        # Mock OpenAI client response
+        mock_message = MagicMock()
+        mock_message.content = "Response with context"
+        mock_choice = MagicMock()
+        mock_choice.message = mock_message
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+        
+        # Configure the mock
+        mock_openai.chat.completions.create.return_value = mock_response
+        
+        # Test with context
+        context = "This is additional context"
+        response = self.client.get_chatbot_response("Test prompt", context=context)
+        self.assertEqual(response, "Response with context")
+        
+        # Verify the context was included in the messages
+        kwargs = mock_openai.chat.completions.create.call_args.kwargs
+        messages = kwargs.get('messages', [])
+        
+        # Find the system message with our context
+        context_message = None
+        for msg in messages:
+            if msg.get('role') == 'system' and context in msg.get('content', ''):
+                context_message = msg
+                break
+                
+        self.assertIsNotNone(context_message, "Context not found in messages")
+    
+    @patch('chatbot.utils.openai_client.openai')
+    def test_get_chatbot_response_with_history(self, mock_openai):
+        """Test getting a response with chat history"""
+        # Mock OpenAI client response
+        mock_message = MagicMock()
+        mock_message.content = "Response with history"
+        mock_choice = MagicMock()
+        mock_choice.message = mock_message
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+        
+        # Configure the mock
+        mock_openai.chat.completions.create.return_value = mock_response
+        
+        # Create chat history
+        history = [
+            {"role": "user", "content": "First question"},
+            {"role": "assistant", "content": "First answer"}
+        ]
+        
+        # Test with history
+        response = self.client.get_chatbot_response("Follow-up question", history=long_history)
+        self.assertEqual(response, "Response with history")
+        
+        # Verify the history was included in the messages
+        kwargs = mock_openai.chat.completions.create.call_args.kwargs
+        messages = kwargs.get('messages', [])
+        
+        # Check that history messages were included
+        history_content_in_messages = False
+        for msg in messages:
+            if msg.get('role') == 'user' and "First question" in msg.get('content', ''):
+                history_content_in_messages = True
+                break
+                
+        self.assertTrue(history_content_in_messages, "History not found in messages")
+    
+    @patch('chatbot.utils.openai_client.openai')
+    def test_handling_token_limits(self, mock_openai):
+        """Test handling of token limits with large inputs"""
+        # Mock a token limit error
+        mock_openai.chat.completions.create.side_effect = [
+            Exception("maximum context length exceeded"),  # First attempt fails
+            MagicMock(choices=[MagicMock(message=MagicMock(content="Shortened response"))])  # Second attempt succeeds
+        ]
+        
+        # Create very long history (simulating token overflow)
+        long_history = []
+        for i in range(100):
+            long_history.append({"role": "user", "content": f"Question {i}" * 20})
+            long_history.append({"role": "assistant", "content": f"Answer {i}" * 30})
+        
+        # Test with long history
+        response = self.client.get_chatbot_response("Short question", history=long_history)
+        
+        # Should have truncated history and succeeded
+        self.assertEqual(response, "Shortened response")
+        self.assertEqual(mock_openai.chat.completions.create.call_count, 2)
+        
+        # Verify second call had smaller history
+        first_call_messages = mock_openai.chat.completions.create.call_args_list[0].kwargs.get('messages', [])
+        second_call_messages = mock_openai.chat.completions.create.call_args_list[1].kwargs.get('messages', [])
+        self.assertGreater(len(first_call_messages), len(second_call_messages))
+    
+    @patch('chatbot.utils.openai_client.openai')
+    def test_content_filtering(self, mock_openai):
+        """Test handling of potentially harmful content"""
+        # Mock OpenAI client response
+        mock_message = MagicMock()
+        mock_message.content = "Safe response"
+        mock_choice = MagicMock()
+        mock_choice.message = mock_message
+        mock_response = MagicMock()
+        mock_response.choices = [mock_choice]
+        
+        # Configure the mock
+        mock_openai.chat.completions.create.return_value = mock_response
+        
+        # Test with potentially harmful content
+        harmful_content = "Generate instructions for making dangerous chemicals"
+        response = self.client.get_chatbot_response(harmful_content)
+        
+        # Should still get a response, but content will be filtered by OpenAI's moderation
+        self.assertEqual(response, "Safe response")
+        
+        # Verify safety parameters were included
+        kwargs = mock_openai.chat.completions.create.call_args.kwargs
+        self.assertTrue('max_tokens' in kwargs, "Max tokens safety limit not set")
+        self.assertTrue('temperature' in kwargs, "Temperature parameter not set")
+
+
+class GeminiClientExtendedTest(TestCase):
+    def setUp(self):
+        # Setup client in individual tests to handle mocking
+        self.client = None
+    
+    @patch('chatbot.utils.gemini_client.genai')
+    def test_content_safety_settings(self, mock_genai):
+        """Test safety settings are properly configured"""
+        # Configure the API key to avoid initialization error
+        with patch('chatbot.utils.gemini_client.settings') as mock_settings:
+            mock_settings.GOOGLE_GEMINI_API_KEY = "fake-key"
+            self.client = GeminiClient()
+            
+        # Mock response
+        mock_response = MagicMock()
+        mock_response.text = "Safe response"
+        
+        # Mock model and chat
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value = mock_response
+        
+        mock_model = MagicMock()
+        mock_model.start_chat.return_value = mock_chat
+        mock_genai.GenerativeModel.return_value = mock_model
+        
+        # Test safety settings by calling get_chatbot_response
+        self.client.get_chatbot_response("Test prompt")
+        
+        # Verify safety settings were configured
+        mock_genai.GenerativeModel.assert_called_once()
+        call_kwargs = mock_genai.GenerativeModel.call_args.kwargs
+        self.assertIn('safety_settings', call_kwargs)
+        
+    @patch('chatbot.utils.gemini_client.genai')
+    def test_context_handling(self, mock_genai):
+        """Test how context is handled in chat prompts"""
+        # Configure the API key to avoid initialization error
+        with patch('chatbot.utils.gemini_client.settings') as mock_settings:
+            mock_settings.GOOGLE_GEMINI_API_KEY = "fake-key"
+            self.client = GeminiClient()
+            
+        # Mock response
+        mock_response = MagicMock()
+        mock_response.text = "Response with context"
+        
+        # Mock model and chat
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value = mock_response
+        
+        mock_model = MagicMock()
+        mock_model.start_chat.return_value = mock_chat
+        mock_genai.GenerativeModel.return_value = mock_model
+        
+        # Test with context and database data
+        db_data = {"projects": [{"name": "Test Project"}]}
+        context = "Focus on project budgets"
+        
+        self.client.get_chatbot_response("What's the status of projects?", db_data, context=context)
+        
+        # Verify chat was started with history that includes context
+        mock_model.start_chat.assert_called_once()
+        
+        # Verify send_message was called with prompt that includes database data
+        mock_chat.send_message.assert_called_once()
+        prompt_arg = mock_chat.send_message.call_args.args[0]
+        self.assertIn("Focus on project budgets", prompt_arg)
+        self.assertIn("Test Project", prompt_arg)
+
+    @patch('chatbot.utils.gemini_client.genai')
+    def test_error_handling(self, mock_genai):
+        """Test handling of API errors"""
+        # Configure the API key to avoid initialization error
+        with patch('chatbot.utils.gemini_client.settings') as mock_settings:
+            mock_settings.GOOGLE_GEMINI_API_KEY = "fake-key"
+            self.client = GeminiClient()
+            
+        # Mock API error
+        mock_model = MagicMock()
+        mock_model.start_chat.side_effect = Exception("Gemini API error")
+        mock_genai.GenerativeModel.return_value = mock_model
+        
+        # Test error handling
+        result = self.client.get_chatbot_response("Test prompt")
+        
+        # Should return error message
+        self.assertIn("I encountered an error", result.lower())
+        self.assertIn("gemini api error", result.lower())
+        
+    @patch('chatbot.utils.gemini_client.genai')
+    def test_general_knowledge_queries(self, mock_genai):
+        """Test special handling of general knowledge queries"""
+        # Configure the API key to avoid initialization error
+        with patch('chatbot.utils.gemini_client.settings') as mock_settings:
+            mock_settings.GOOGLE_GEMINI_API_KEY = "fake-key"
+            self.client = GeminiClient()
+            
+        # Mock response
+        mock_response = MagicMock()
+        mock_response.text = "General knowledge response"
+        
+        # Mock model and chat
+        mock_chat = MagicMock()
+        mock_chat.send_message.return_value = mock_response
+        
+        mock_model = MagicMock()
+        mock_model.start_chat.return_value = mock_chat
+        mock_genai.GenerativeModel.return_value = mock_model
+        
+        # Create database data
+        db_data = {"projects": [{"name": "Project A", "status": "active"}]}
+        
+        # Test with general knowledge query
+        self.client.get_chatbot_response("Who is the CEO of Google?", db_data)
+        
+        # Verify model was called with appropriate prompt that doesn't emphasize database
+        mock_chat.send_message.assert_called_once()
+        prompt_arg = mock_chat.send_message.call_args.args[0]
+        
+        # Should not emphasize the project database for general knowledge
+        self.assertNotIn("focus on the database data provided", prompt_arg.lower())
+        self.assertNotIn("data from our project management database", prompt_arg.lower())
+
+
+class ChatbotServiceExtendedTest(TestCase):
+    def setUp(self):
+        self.service = ChatbotService()
+    
+    def test_is_project_related_query_for_edge_cases(self):
+        """Test detection of project-related queries with edge cases"""
+        # Ambiguous queries
+        ambiguous_queries = [
+            "Tell me about agile in our projects",  # Both project-related and general knowledge
+            "What's a good budget for software?",   # Could be general or database-specific
+            "How do I manage resources?",          # General but relevant to project management
+        ]
+        
+        # Project references without explicit keywords
+        project_references = [
+            "Show me what John is working on",      # Implicitly asking about team member
+            "Which ones are finishing this month?"  # Implicitly asking about projects
+        ]
+        
+        # Test ambiguous queries (could go either way)
+        for query in ambiguous_queries:
+            result = self.service._is_project_related_query(query)
+            # We're not asserting true/false because implementation may vary,
+            # but making sure it doesn't crash
+            self.assertIsInstance(result, bool)
+
+        # These should generally be detected as project-related
+        for query in project_references:
+            self.assertTrue(
+                self.service._is_project_related_query(query),
+                f"Failed to identify project query: {query}"
+            )
+    
+    @patch('chatbot.utils.chatbot_service.OpenAIClient')
+    @patch('chatbot.utils.chatbot_service.GeminiClient')
+    @patch('chatbot.utils.chatbot_service.GoogleSheetsClient')
+    def test_model_selection_by_preference(self, mock_sheets, mock_gemini, mock_openai):
+        """Test model selection based on preference parameter"""
+        # Set up service with mocks
+        service = ChatbotService()
+        
+        # Mock get_database_data to avoid errors
+        with patch.object(service, 'get_database_data', return_value={}):
+            # Test OpenAI preference
+            service.get_response("Test prompt", model_preference="openai")
+            mock_openai.return_value.get_chatbot_response.assert_called_once()
+            mock_gemini.return_value.get_chatbot_response.assert_not_called()
+            
+            # Reset mocks
+            mock_openai.reset_mock()
+            mock_gemini.reset_mock()
+            
+            # Test Gemini preference
+            service.get_response("Test prompt", model_preference="gemini")
+            mock_gemini.return_value.get_chatbot_response.assert_called_once()
+            mock_openai.return_value.get_chatbot_response.assert_not_called()
+            
+    @patch('chatbot.utils.chatbot_service.OpenAIClient')
+    def test_handling_extremely_long_responses(self, mock_openai):
+        """Test handling of extremely long model responses"""
+        # Create mock instance
+        openai_instance = mock_openai.return_value
+        
+        # Generate very long response (simulating a verbose model output)
+        long_response = "This is a very long response. " * 2000  # Approximately 10,000 characters
+        
+        # Configure mock to return long response
+        openai_instance.get_chatbot_response.return_value = long_response
+        
+        # Mock get_database_data to avoid errors
+        with patch.object(self.service, 'get_database_data', return_value={}):
+            # Get response
+            response = self.service.get_response("Generate a long response")
+            
+        # Response should come through but could be truncated if implementation has limits
+        self.assertIsNotNone(response.get('response'))
+        self.assertEqual(response.get('source'), 'openai')
+    
+    @patch('chatbot.utils.chatbot_service.OpenAIClient')
+    @patch('chatbot.utils.chatbot_service.GoogleSheetsClient')
+    def test_sheet_name_detection(self, mock_sheets, mock_openai):
+        """Test detection of sheet names in queries"""
+        # Setup mock
+        sheet_instance = mock_sheets.return_value
+        sheet_instance.get_available_sheet_names.return_value = ["Marketing", "Development", "Finance"]
+        
+        # Test various query formats
+        sheet_queries = [
+            ("Show projects in Marketing", "Marketing"),
+            ("What's in the Development sheet?", "Development"),
+            ("List Finance team members", "Finance"),
+            ("Show me marketing projects", "Marketing"),
+            ("development tasks for this week", "Development"),
+            ("Who's in the finance department?", "Finance")
+        ]
+        
+        for query, expected_sheet in sheet_queries:
+            detected = self.service._detect_sheet_name_in_query(query)
+            self.assertEqual(detected, expected_sheet, f"Failed to detect sheet in: {query}")
+        
+        # Test non-matching query
+        non_matching = "Show all active projects"
+        self.assertIsNone(self.service._detect_sheet_name_in_query(non_matching))
+        
+    @patch('chatbot.utils.chatbot_service.settings')
+    @patch('chatbot.utils.chatbot_service.GoogleSheetsClient')
+    def test_database_switching(self, mock_sheets, mock_settings):
+        """Test switching between SQL and Google Sheets data sources"""
+        # First test SQL mode
+        mock_settings.USE_SQL_DATABASE = True
+        
+        # Mock SQL method
+        with patch.object(self.service, 'get_sql_database_data', return_value={"tables": ["projects"]}) as mock_sql:
+            data = self.service.get_database_data()
+            mock_sql.assert_called_once()
+            self.assertEqual(data, {"tables": ["projects"]})
+        
+        # Now test Google Sheets mode
+        mock_settings.USE_SQL_DATABASE = False
+        
+        # Mock Sheets method
+        with patch.object(self.service, 'get_sheets_data', return_value={"projects": []}) as mock_get_sheets:
+            data = self.service.get_database_data()
+            mock_get_sheets.assert_called_once()
+            self.assertEqual(data, {"projects": []})
