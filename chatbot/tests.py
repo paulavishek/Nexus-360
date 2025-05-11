@@ -2173,6 +2173,7 @@ class OpenAIClientExtendedTest(TestCase):
             {"role": "user", "content": "First question"},
             {"role": "assistant", "content": "First answer"}
         ]
+        long_history = history  # Define long_history for use below
         
         # Test with history
         response = self.client.get_chatbot_response("Follow-up question", history=long_history)
