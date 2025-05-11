@@ -1,7 +1,7 @@
-# Cloud Run deployment script for PM Chatbot for Windows PowerShell
+# Cloud Run deployment script for Nexus360 for Windows PowerShell
 
-Write-Host "=== PM Chatbot - Google Cloud Run Deployment ===" -ForegroundColor Green
-Write-Host "This script will help you deploy your chatbot to Google Cloud Run."
+Write-Host "=== Nexus360 - Google Cloud Run Deployment ===" -ForegroundColor Green
+Write-Host "This script will help you deploy Nexus360 to Google Cloud Run."
 
 # 1. Check for gcloud CLI
 Write-Host "`nChecking for Google Cloud SDK..." -ForegroundColor Yellow
@@ -54,7 +54,7 @@ $REPO_NAME = "pm-chatbot"
 & gcloud artifacts repositories create $REPO_NAME `
     --repository-format=docker `
     --location=$REGION `
-    --description="Docker repository for PM Chatbot"
+    --description="Docker repository for Nexus360"
 
 # 6. Build and push the Docker image
 Write-Host "`nBuilding and pushing Docker image..." -ForegroundColor Yellow
@@ -75,7 +75,7 @@ if (-not (Test-Path ".env")) {
 Write-Host "`nSetting up secrets in Secret Manager..." -ForegroundColor Yellow
 
 # Create secrets from .env file
-$SECRET_NAME = "pm-chatbot-env"
+$SECRET_NAME = "nexus360-env"
 
 # Check if secret already exists
 $SECRET_EXISTS = $null
@@ -95,7 +95,7 @@ else {
 
 # 8. Deploy to Cloud Run
 Write-Host "`nDeploying to Cloud Run..." -ForegroundColor Yellow
-$SERVICE_NAME = "pm-chatbot"
+$SERVICE_NAME = "nexus360"
 
 & gcloud run deploy $SERVICE_NAME `
     --image=$IMAGE_NAME `
@@ -103,7 +103,7 @@ $SERVICE_NAME = "pm-chatbot"
     --region=$REGION `
     --allow-unauthenticated `
     --port=8080 `
-    --set-secrets="/app/.env=pm-chatbot-env:latest" `
+    --set-secrets="/app/.env=nexus360-env:latest" `
     --memory=512Mi `
     --cpu=1
 
@@ -111,6 +111,6 @@ $SERVICE_NAME = "pm-chatbot"
 Write-Host "`nDeployment complete!" -ForegroundColor Green
 $URL = & gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)'
 
-Write-Host "Your chatbot is now available at: $URL" -ForegroundColor Green
+Write-Host "Nexus360 is now available at: $URL" -ForegroundColor Green
 Write-Host "Remember to add this URL to your ALLOWED_HOSTS in your .env file if needed." -ForegroundColor Yellow
 Write-Host "You may want to adjust the memory and CPU settings based on your needs." -ForegroundColor Yellow

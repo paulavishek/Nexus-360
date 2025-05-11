@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cloud Run deployment script for PM Chatbot
+# Cloud Run deployment script for Nexus360
 
 # Colors for terminal output
 GREEN='\033[0;32m'
@@ -7,8 +7,8 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}=== PM Chatbot - Google Cloud Run Deployment ===${NC}"
-echo "This script will help you deploy your chatbot to Google Cloud Run."
+echo -e "${GREEN}=== Nexus360 - Google Cloud Run Deployment ===${NC}"
+echo "This script will help you deploy Nexus360 to Google Cloud Run."
 
 # 1. Check for gcloud CLI
 echo -e "\n${YELLOW}Checking for Google Cloud SDK...${NC}"
@@ -59,7 +59,7 @@ REPO_NAME="pm-chatbot"
 gcloud artifacts repositories create $REPO_NAME \
     --repository-format=docker \
     --location=$REGION \
-    --description="Docker repository for PM Chatbot"
+    --description="Docker repository for Nexus360"
 
 # 6. Build and push the Docker image
 echo -e "\n${YELLOW}Building and pushing Docker image...${NC}"
@@ -80,7 +80,7 @@ gcloud builds submit --tag $IMAGE_NAME
 echo -e "\n${YELLOW}Setting up secrets in Secret Manager...${NC}"
 
 # Create secrets from .env file
-SECRET_NAME="pm-chatbot-env"
+SECRET_NAME="nexus360-env"
 
 # Check if secret already exists
 if gcloud secrets describe $SECRET_NAME 2>/dev/null; then
@@ -93,7 +93,7 @@ fi
 
 # 8. Deploy to Cloud Run
 echo -e "\n${YELLOW}Deploying to Cloud Run...${NC}"
-SERVICE_NAME="pm-chatbot"
+SERVICE_NAME="nexus360"
 
 gcloud run deploy $SERVICE_NAME \
     --image=$IMAGE_NAME \
@@ -101,7 +101,7 @@ gcloud run deploy $SERVICE_NAME \
     --region=$REGION \
     --allow-unauthenticated \
     --port=8080 \
-    --set-secrets="/app/.env=pm-chatbot-env:latest" \
+    --set-secrets="/app/.env=nexus360-env:latest" \
     --memory=512Mi \
     --cpu=1
 
@@ -109,6 +109,6 @@ gcloud run deploy $SERVICE_NAME \
 echo -e "\n${GREEN}Deployment complete!${NC}"
 URL=$(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)')
 
-echo -e "${GREEN}Your chatbot is now available at: $URL${NC}"
+echo -e "${GREEN}Nexus360 is now available at: $URL${NC}"
 echo -e "${YELLOW}Remember to add this URL to your ALLOWED_HOSTS in your .env file if needed.${NC}"
 echo -e "${YELLOW}You may want to adjust the memory and CPU settings based on your needs.${NC}"

@@ -1,6 +1,6 @@
-# Deploying PM Chatbot to Google Cloud Run
+# Deploying Nexus360 to Google Cloud Run
 
-This document provides instructions for deploying your PM Chatbot (with OpenAI, Gemini, and Google Search capabilities) to Google Cloud Run.
+This document provides instructions for deploying your Nexus360 (with OpenAI, Gemini, and Google Search capabilities) to Google Cloud Run.
 
 ## Prerequisites
 
@@ -53,38 +53,36 @@ If you prefer to deploy manually, follow these steps:
 1. **Set up your Google Cloud Project**:
    ```bash
    gcloud auth login
-   gcloud projects create [PROJECT_ID] --name="PM Chatbot"
+   gcloud projects create [PROJECT_ID] --name="Nexus360"
    gcloud config set project [PROJECT_ID]
    gcloud services enable cloudbuild.googleapis.com run.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com
    ```
 
 2. **Create a Docker repository**:
-   ```bash
-   gcloud artifacts repositories create pm-chatbot \
+   ```bash   gcloud artifacts repositories create nexus360 \
      --repository-format=docker \
      --location=us-central1 \
-     --description="Docker repository for PM Chatbot"
+     --description="Docker repository for Nexus360"
    ```
 
 3. **Build and push your Docker image**:
    ```bash
-   gcloud builds submit --tag us-central1-docker.pkg.dev/[PROJECT_ID]/pm-chatbot/pm-chatbot:v1
+   gcloud builds submit --tag us-central1-docker.pkg.dev/[PROJECT_ID]/nexus360/nexus360:v1
    ```
 
 4. **Set up your environment variables as secrets**:
    ```bash
-   gcloud secrets create pm-chatbot-env --data-file=.env
+   gcloud secrets create nexus360-env --data-file=.env
    ```
 
 5. **Deploy to Cloud Run**:
-   ```bash
-   gcloud run deploy pm-chatbot \
-     --image=us-central1-docker.pkg.dev/[PROJECT_ID]/pm-chatbot/pm-chatbot:v1 \
+   ```bash   gcloud run deploy nexus360 \
+     --image=us-central1-docker.pkg.dev/[PROJECT_ID]/nexus360/nexus360:v1 \
      --platform=managed \
      --region=us-central1 \
      --allow-unauthenticated \
      --port=8080 \
-     --set-secrets="/app/.env=pm-chatbot-env:latest" \
+     --set-secrets="/app/.env=nexus360-env:latest" \
      --memory=512Mi \
      --cpu=1
    ```
@@ -95,7 +93,7 @@ Before deploying, ensure your `.env` file is properly configured. You can start 
 
 1. Set `DJANGO_SECRET_KEY` to a secure random string
 2. Set `DEBUG=False` for production
-3. Update `ALLOWED_HOSTS` to include your Cloud Run domain (will be something like `pm-chatbot-abcdefg-uc.a.run.app`)
+3. Update `ALLOWED_HOSTS` to include your Cloud Run domain (will be something like `nexus360-abcdefg-uc.a.run.app`)
 4. Add your API keys:
    - `OPENAI_API_KEY`
    - `GOOGLE_GEMINI_API_KEY`

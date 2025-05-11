@@ -1,6 +1,6 @@
-# Contributing to Project Management Chatbot
+# Contributing to Nexus360
 
-Thank you for your interest in contributing to the Project Management Chatbot! This document provides guidelines and instructions for contributing to this project.
+Thank you for your interest in contributing to Nexus360! This document provides guidelines and instructions for contributing to this project.
 
 ## 📋 Table of Contents
 
@@ -187,4 +187,4 @@ When contributing to the AI model integrations:
 
 ---
 
-Thank you for contributing to the Project Management Chatbot! Your efforts help make this tool better for everyone.
+Thank you for contributing to Nexus360! Your efforts help make this tool better for everyone.

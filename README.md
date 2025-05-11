@@ -1,8 +1,8 @@
-# Project Management Chatbot
+# Nexus360
 
 <div align="center">
   <p align="center">
-  <img src="pm_chatbot_logo.png" alt="PM Chatbot Logo" width="300">
+  <img src="nexus360_logo.png" alt="Nexus360 Logo" width="300">
 </p>
   <h3>Intelligent Project Assistant</h3>
   <p>Your AI-powered companion for project insights</p>
@@ -33,7 +33,7 @@
 
 ## 🔍 Overview
 
-The Project Management Chatbot is an intelligent assistant that connects to your data sources (Google Sheets or SQL databases) and provides natural language answers to your questions. Simply type your questions about projects, budgets, timelines, or team members, and get instant insights powered by OpenAI and Google Gemini AI models. With the new Google Search integration, the chatbot can now also provide up-to-date information from the web to complement its knowledge.
+Nexus360 is an intelligent assistant that connects to your data sources (Google Sheets or SQL databases) and provides natural language answers to your questions. Simply type your questions about projects, budgets, timelines, or team members, and get instant insights powered by OpenAI and Google Gemini AI models. With the new Google Search integration, the chatbot can now also provide up-to-date information from the web to complement its knowledge.
 
 This application brings your project data to life, allowing both technical and non-technical team members to access critical information through a simple conversation interface. No SQL queries or spreadsheet formulas needed!
 
