@@ -43,6 +43,10 @@ RUN pip install --no-cache-dir --upgrade pip==24.0 \
 # Copy project with appropriate permissions
 COPY --chown=1000:1000 . .
 
+# Copy the entrypoint script and make it executable
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Set up a non-root user for better security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
     && chown -R appuser:appgroup /app
@@ -70,4 +74,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 
 # Run gunicorn with Uvicorn worker for handling ASGI applications including WebSockets
 # Note: We keep the module path as project_chatbot for code compatibility
-CMD ["gunicorn", "project_chatbot.asgi:application", "-b", "0.0.0.0:8080", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "--timeout", "300"]
+# CMD ["gunicorn", "project_chatbot.asgi:application", "-b", "0.0.0.0:8080", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "--timeout", "300"]
+ENTRYPOINT ["/app/entrypoint.sh"]
