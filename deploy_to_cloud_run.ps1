@@ -46,7 +46,7 @@ Write-Host "`nEnabling required Google Cloud APIs..." -ForegroundColor Yellow
 
 # 5. Create a Docker repository
 Write-Host "`nSetting up Artifact Registry..." -ForegroundColor Yellow
-$REGION = "us-central1"  # Default region
+$REGION = "asia-south1"  # Default region
 $INPUT_REGION = Read-Host "Enter region for deployment [$REGION]"
 if ($INPUT_REGION) { $REGION = $INPUT_REGION }
 
