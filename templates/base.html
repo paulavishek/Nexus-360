@@ -650,10 +650,8 @@
     </style>
     {% block extra_css %}{% endblock %}
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'chatbot:index' %}">
+<body>    <nav class="navbar navbar-expand-lg">
+        <div class="container">            <a class="navbar-brand" href="{% url 'chatbot:welcome' %}">
                 <i class="fas fa-robot me-2"></i>Nexus360
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -663,7 +661,13 @@
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'chatbot:index' %}"><i class="fas fa-comments me-1"></i>Chat</a>
+                        <a class="nav-link" href="{% url 'chatbot:index' %}"><i class="fas fa-comments me-1"></i>Chatbot</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'chatbot:dashboard' %}"><i class="fas fa-chart-bar me-1"></i>Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'chatbot:chat_history' %}"><i class="fas fa-history me-1"></i>History</a>
                     </li>
                     <li class="nav-item">
                         <div class="theme-toggle" id="theme-toggle" title="Toggle Dark Mode">

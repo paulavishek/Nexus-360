@@ -1069,13 +1069,13 @@
                                     content: msg.content
                                 });
                             });
-                            
-                            // Restore starred messages
+                              // Restore starred messages
                             restoreStarredMessages();
                             
-                            // Scroll to bottom
+                            // Don't automatically scroll to bottom on page load
+                            // Instead, scroll to the top of the chat container
                             setTimeout(() => {
-                                chatContainer.scrollTop(chatContainer.prop('scrollHeight'));
+                                chatContainer.scrollTop(0);
                             }, 100);
                         }
                     },
@@ -2006,16 +2006,19 @@
                     messageEl.find('.star-btn').html('<i class="fas fa-star"></i>');
                 }
             });
-        }
-        
-        // Call restore starred messages when the page loads
+        }        // Call restore starred messages when the page loads
         restoreStarredMessages();
         
         // Initialize chat history
         initializeChatHistory();
         
-        // Focus input on page load
-        userInput.focus();
+        // Scroll to top of page on load
+        window.scrollTo(0, 0);
+        
+        // Focus on input without scrolling to it
+        setTimeout(() => {
+            userInput.focus({ preventScroll: true });
+        }, 500);
     });
 </script>
 {% endblock %}

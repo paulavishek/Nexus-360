@@ -203,6 +203,16 @@ def logout_view(request):
     messages.success(request, 'You have been logged out successfully')
     return redirect('chatbot:login')
 
+def welcome_view(request):
+    """
+    Landing page that directs users to either login or register
+    If already authenticated, redirects to the chatbot interface
+    """
+    if request.user.is_authenticated:
+        return redirect('chatbot:index')
+    
+    return render(request, 'chatbot/welcome.html')
+
 def register_view(request):
     """View for user registration"""
     if request.user.is_authenticated:

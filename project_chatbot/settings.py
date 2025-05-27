@@ -101,7 +101,19 @@ if REDIS_HOST and REDIS_PORT and not (REDIS_HOST == '127.0.0.1' and DEBUG):
     }
 
 # Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+
+DB_ENGINE = os.getenv('DB_ENGINE', 'django.db.backends.sqlite3')
+DB_NAME = os.getenv('DB_NAME', BASE_DIR / 'db.sqlite3')
+DB_USER = os.getenv('DB_USER', '')
+DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+DB_HOST = os.getenv('DB_HOST', '')
+if '#' in DB_HOST:  # Add this block to clean DB_HOST
+    DB_HOST = DB_HOST.split('#')[0].strip()
+DB_PORT = os.getenv('DB_PORT', '5432')
+if '#' in DB_PORT:
+    DB_PORT = DB_PORT.split('#')[0].strip()
+# Default PostgreSQL port
 
 # Use environment variable to determine which database to use
 DB_TYPE = os.getenv('DB_TYPE', 'sqlite')
@@ -113,8 +125,8 @@ if DB_TYPE == 'postgresql':
             'NAME': os.getenv('DB_NAME', 'pm_chatbot'),
             'USER': os.getenv('DB_USER', 'postgres'),
             'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'HOST': os.getenv('DB_HOST', 'localhost'),
-            'PORT': os.getenv('DB_PORT', '5432'),
+            'HOST': DB_HOST,  # Use the cleaned DB_HOST variable
+            'PORT': DB_PORT,  # Use the cleaned DB_PORT variable
         }
     }
 elif DB_TYPE == 'mysql':
@@ -124,8 +136,8 @@ elif DB_TYPE == 'mysql':
             'NAME': os.getenv('DB_NAME', 'pm_chatbot'),
             'USER': os.getenv('DB_USER', 'root'),
             'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'HOST': os.getenv('DB_HOST', 'localhost'),
-            'PORT': os.getenv('DB_PORT', '3306'),
+            'HOST': DB_HOST,  # Use the cleaned DB_HOST variable
+            'PORT': DB_PORT,  # Use the cleaned DB_PORT variable
             'OPTIONS': {
                 'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
                 'charset': 'utf8mb4',

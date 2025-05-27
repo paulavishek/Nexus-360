@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to Nexus360{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-8 text-center">
+            <h1 class="display-4 mb-4">Welcome to Nexus360</h1>
+            <p class="lead">Your AI-powered database assistant for project management insights.</p>
+            
+            <div class="row mt-5">
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h3>New User?</h3>
+                            <p>Create an account to get started with your AI assistant.</p>
+                            <a href="{% url 'chatbot:register' %}" class="btn btn-primary btn-lg">Register</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h3>Returning User?</h3>
+                            <p>Sign in to continue your conversation.</p>
+                            <a href="{% url 'chatbot:login' %}" class="btn btn-outline-primary btn-lg">Login</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-5">
+                <h3>Key Features:</h3>
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5>Database Insights</h5>
+                                <p>Query your project data with natural language</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5>Dual AI Models</h5>
+                                <p>Powered by Google Gemini and OpenAI</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5>Personalized Experience</h5>
+                                <p>Save conversations and preferences</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
