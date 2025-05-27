@@ -8,6 +8,7 @@ from .google_search import GoogleSearchClient
 from django.conf import settings
 import json
 import pandas as pd
+import logging
 
 class ChatbotService:
     """
@@ -21,6 +22,9 @@ class ChatbotService:
         self.search_client = GoogleSearchClient()
         self.rate_limit_retries = 3
         self.rate_limit_cooldown = 5  # seconds
+        
+        # Setup logging
+        self.logger = logging.getLogger(__name__)
         
     def get_database_data(self, use_cache=True):
         """
@@ -432,8 +436,7 @@ class ChatbotService:
                         'source': 'error',
                         'error': f"Error: {str(fallback_error)}"
                     }
-        
-        # If we've exhausted all retries
+          # If we've exhausted all retries
         return {
             'response': "I'm experiencing connectivity issues. Please try again later.",
             'source': 'error',
@@ -452,18 +455,57 @@ class ChatbotService:
         """
         prompt_lower = prompt.lower()
         
-        # Keywords indicating need for recent information
+        # Enhanced keywords indicating need for recent information
         search_indicators = [
+            # Time-based indicators
             "latest", "recent", "current", "news", "today", "yesterday", 
-            "this week", "this month", "this year", "update", "weather",
-            "happened", "trending", "stock", "price", "covid", "pandemic", 
-            "election", "released", "announced", "launch", "event", "2024", "2025"
+            "this week", "this month", "this year", "update", "updated",
+            
+            # Action/event indicators  
+            "happened", "trending", "released", "announced", "launch", "launched",
+            "breaking", "event", "events", 
+            
+            # Market/finance indicators
+            "stock", "price", "prices", "market", 
+            
+            # Technology indicators
+            "covid", "pandemic", "election", "weather",
+            
+            # Year indicators for recent information
+            "2024", "2025", # Assuming current year is 2025 or queries relate to it
+            
+            # Additional time indicators (high priority additions)
+            "now", "currently", "at the moment", "right now", "as of",
+            "up to date", "up-to-date", "real time", "real-time",
+            "live", "immediate", "instantly",
+            
+            # Development/business indicators
+            "developments", "progress", "advancement", "innovation",
+            "breakthrough", "update", "revision", "changes",
+            
+            # News/media indicators  
+            "report", "reports", "article", "study", "research",
+            "publication", "findings", "discovery", "announcement",
+
+            # New general keywords
+            "define", "explain", "who is", "what is", "how to", "why do",
+            "compare", "difference between", "pros and cons",
+            "best practice", "tutorial", "guide", "statistics", "data on"
         ]
         
-        # Question patterns that often need web search
+        # Enhanced question patterns that often need web search
         question_patterns = [
+            # Original patterns
             "what is the latest", "how recent", "when did", "what happened",
-            "tell me about", "is there any news", "what's new", "what are some recent"
+            "tell me about", "is there any news", "what's new", "what are some recent",
+            
+            # Additional patterns (high priority additions)
+            "what's happening", "what's going on", "any updates on",
+            "current status of", "latest news about", "recent developments in",
+            "what's the current", "how is", "what are the current trends",
+            "latest information on", "recent updates about", "current state of",
+            "what's the situation with", "any recent news about",
+            "current events", "breaking news", "recent reports on"
         ]
         
         # Calculate a score based on presence of indicators
@@ -475,14 +517,13 @@ class ChatbotService:
         for pattern in question_patterns:
             if pattern in prompt_lower:
                 score += 0.7
-                
-        # If database already has the information, we might not need a search
+                  # If database already has the information, we might not need a search
         database_focused = "in the database" in prompt_lower or "in our data" in prompt_lower or "in the sheet" in prompt_lower
         if database_focused:
             score -= 1
             
         return score >= 1.0  # Threshold for when search is likely helpful
-        
+    
     def _get_search_enhanced_context(self, prompt, max_results=3):
         """
         Get web search results to enhance the context for an AI response
@@ -495,8 +536,8 @@ class ChatbotService:
             str: Web search results formatted as context
         """
         try:
-            # Get search context
-            search_context = self.search_client.get_search_context(prompt, max_results=max_results)
+            # Get search context with caching enabled
+            search_context = self.search_client.get_search_context(prompt, max_results=max_results, use_cache=True)
             
             # Add instructions for the model
             search_context += "\n\nPlease use this information to help answer the user's question accurately. " \
@@ -505,5 +546,60 @@ class ChatbotService:
                             
             return search_context
         except Exception as e:
-            print(f"Error getting search context: {e}")
+            error_msg = f"Error getting search context: {e}"
+            self.logger.error(error_msg)
             return ""
+    
+    def get_search_metrics(self, date_str=None):
+        """
+        Get search metrics for the current date or specified date
+        
+        Args:
+            date_str (str): Date string in YYYYMMDD format, defaults to today
+            
+        Returns:
+            dict: Search metrics including success rate, cache hit rate, etc.
+        """
+        try:
+            metrics = self.search_client.get_search_metrics(date_str)
+            
+            # Calculate derived metrics
+            if metrics['total_searches'] > 0:
+                metrics['success_rate'] = (metrics['successful_searches'] / metrics['total_searches']) * 100
+                metrics['cache_hit_rate'] = (metrics['cached_searches'] / metrics['total_searches']) * 100
+                
+                if metrics['successful_searches'] > metrics['cached_searches']:
+                    api_calls = metrics['successful_searches'] - metrics['cached_searches']
+                    metrics['average_response_time'] = metrics['total_response_time'] / api_calls if api_calls > 0 else 0
+                else:
+                    metrics['average_response_time'] = 0
+            else:
+                metrics['success_rate'] = 0
+                metrics['cache_hit_rate'] = 0
+                metrics['average_response_time'] = 0
+                
+            return metrics
+        except Exception as e:
+            self.logger.error(f"Error getting search metrics: {e}")
+            return {
+                'total_searches': 0,
+                'successful_searches': 0,
+                'failed_searches': 0,
+                'cached_searches': 0,
+                'success_rate': 0,
+                'cache_hit_rate': 0,
+                'average_response_time': 0
+            }
+    
+    def clear_search_cache(self):
+        """
+        Clear search cache and return status
+        
+        Returns:
+            bool: True if cache was cleared successfully
+        """
+        try:
+            return self.search_client.clear_search_cache()
+        except Exception as e:
+            self.logger.error(f"Error clearing search cache: {e}")
+            return False

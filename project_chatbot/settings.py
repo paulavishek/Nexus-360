@@ -233,6 +233,9 @@ CACHES = {
 
 # Cache timeouts (in seconds)
 GOOGLE_SHEETS_CACHE_TIMEOUT = 300  # 5 minutes
+GOOGLE_SEARCH_CACHE_TIMEOUT = 1800 # 30 minutes, new setting for search cache
+GOOGLE_SEARCH_RATE_LIMIT_RETRIES = 3 # New setting for search retries
+GOOGLE_SEARCH_RATE_LIMIT_COOLDOWN = 2 # New setting for search cooldown in seconds
 
 # Database query configuration
 USE_SQL_DATABASE = os.getenv('USE_SQL_DATABASE', 'False').lower() == 'true'  # Set to True to use SQL instead of Google Sheets
@@ -242,3 +245,44 @@ SQL_QUERY_ROW_LIMIT = 1000  # Maximum number of rows to return for safety
 GOOGLE_SEARCH_API_KEY = os.environ.get('GOOGLE_SEARCH_API_KEY', '')
 GOOGLE_SEARCH_ENGINE_ID = os.environ.get('GOOGLE_SEARCH_ENGINE_ID', '')
 ENABLE_WEB_SEARCH = os.environ.get('ENABLE_WEB_SEARCH', 'True').lower() == 'true'
+
+# Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'google_search.log'),
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'chatbot.utils.google_search': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'chatbot.utils.chatbot_service': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
