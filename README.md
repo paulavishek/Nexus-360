@@ -1,512 +1,403 @@
 # Nexus360
 
-<div align="center">
-  <p align="center">
+<p align="center">
   <img src="nexus360_logo.png" alt="Nexus360 Logo" width="300">
 </p>
-  <h3>Intelligent Project Assistant</h3>
-  <p>Your AI-powered companion for project insights</p>
-</div>
+<h3 align="center">Intelligent Project Assistant</h3>
+<p align="center">Your AI-powered companion for project insights</p>
 
 ## 📋 Table of Contents
-- [Overview](#-overview)
-- [Key Features](#-key-features)
-- [User Guide](#-user-guide)
+
+- [What is Nexus360?](#what-is-nexus360)
+- [Cool Things Nexus360 Can Do](#cool-things-nexus360-can-do)
+- [How to Use Nexus360 (For Everyone!)](#how-to-use-nexus360-for-everyone)
   - [Getting Started](#getting-started)
-  - [Using the Chat Interface](#using-the-chat-interface)
-  - [Model Selection](#model-selection)
-  - [Chat Sessions](#chat-sessions)
-  - [Google Search Integration](#google-search-integration)
-  - [Dashboard and Analytics](#dashboard-and-analytics)
-  - [Sample Questions](#sample-questions)
-- [Technical Setup](#-technical-setup)
-  - [Requirements](#requirements)
-  - [Installation](#installation)
-  - [Configuration](#configuration)
-  - [Google Search API Setup](#google-search-api-setup)
-  - [Database Scaling](#database-scaling)
-- [Admin Guide](#-admin-guide)
-- [Advanced Features](#-advanced-features)
-- [Troubleshooting](#-troubleshooting)
-- [Security](#-security)
-- [Production Deployment](#-production-deployment)
+  - [Chatting with Nexus360](#chatting-with-nexus360)
+  - [Choosing Your AI Brain (Model Selection)](#choosing-your-ai-brain-model-selection)
+  - [Keeping Chats Organized (Chat Sessions)](#keeping-chats-organized-chat-sessions)
+  - [Super-Smart Answers with Google Search (RAG)](#super-smart-answers-with-google-search-rag)
+  - [What is RAG? (Retrieval Augmented Generation)](#what-is-rag-retrieval-augmented-generation)
+  - [Seeing How You Use Nexus360 (Dashboard and Analytics)](#seeing-how-you-use-nexus360-dashboard-and-analytics)
+  - [Example Questions to Ask](#example-questions-to-ask)
+- [For the Tech-Savvy (Technical Setup)](#for-the-tech-savvy-technical-setup)
+  - [What You Need](#what-you-need)
+  - [Getting it Running](#getting-it-running)
+  - [Setting Things Up (Configuration)](#setting-things-up-configuration)
+  - [Connecting to Google Search](#connecting-to-google-search)
+  - [Using Bigger Databases](#using-bigger-databases)
+- [For System Admins (Admin Guide)](#for-system-admins-admin-guide)
+- [Extra Cool Tech Features](#extra-cool-tech-features)
+- [Help! Something Went Wrong (Troubleshooting)](#help-something-went-wrong-troubleshooting)
+- [Keeping Things Safe (Security)](#keeping-things-safe-security)
+- [Using Nexus360 for Real (Production Deployment)](#using-nexus360-for-real-production-deployment)
 
-## 🔍 Overview
+## 🤔 What is Nexus360?
 
-Nexus360 is an intelligent assistant that connects to your data sources (Google Sheets or SQL databases) and provides natural language answers to your questions. Simply type your questions about projects, budgets, timelines, or team members, and get instant insights powered by OpenAI and Google Gemini AI models. With the new Google Search integration, the chatbot can now also provide up-to-date information from the web to complement its knowledge.
+Nexus360 is like a super-smart helper for your projects. Imagine you have a lot of project information stored in spreadsheets (like Google Sheets) or databases. Instead of digging through all that data yourself, you can just ask Nexus360 questions in plain English!
 
-This application brings your project data to life, allowing both technical and non-technical team members to access critical information through a simple conversation interface. No SQL queries or spreadsheet formulas needed!
+For example, you can ask:
 
-## ✨ Key Features
+- "Which projects are running late?"
+- "How much money is left for the 'New Website' project?"
+- "Who is working on the marketing campaign?"
 
-- **Flexible Data Source Integration**: 
-  - **Google Sheets**: Connect directly to your existing project data in Google Sheets
-  - **SQL Databases**: Scale up with MySQL or PostgreSQL for larger datasets
-- **Dual AI Models**: Choose between two powerful AI engines:
-  - **Google Gemini**: Google's latest AI model for fast, efficient responses
-  - **OpenAI**: Access OpenAI's powerful language models for rich, detailed answers
-- **Google Search Integration**: Access up-to-date information from the web to overcome AI knowledge cutoffs
-- **Natural Language Interface**: Ask questions in plain English about projects, budgets, timelines, resources
-- **Real-time Responses**: Get immediate answers through our WebSocket technology
-- **Multi-Sheet/Table Support**: Query across multiple data sources (Marketing, Development, etc.)
-- **Chat History**: Save all conversations for future reference and knowledge sharing
-- **Session Management**: Create multiple chat sessions for different topics or projects
-- **Usage Analytics**: Track usage patterns and most frequent questions
-- **Model Usage Analytics**: Monitor which AI models are being utilized and their performance
-- **Responsive Design**: Works on desktops, tablets, and mobile devices
-- **Fallback Strategy**: Seamlessly switches between AI models if one experiences issues
+Nexus360 uses powerful AI "brains" (from Google Gemini and OpenAI) to understand your questions and find the answers in your data. Plus, it can even use Google Search to find the very latest information on the web if your question is about something new or very current. This makes it a **Retrieval Augmented Generation (RAG)** system – a fancy way of saying it finds information and then uses it to give you a great answer.
 
-## 📱 User Guide
+It’s designed so that anyone on your team, whether you love tech stuff or not, can easily get the project information they need, just by chatting.
+
+## ✨ Cool Things Nexus360 Can Do
+
+- **Connects to Your Data**: Works with Google Sheets or bigger SQL databases (like MySQL or PostgreSQL).
+- **Two AI Brains**: You can pick between Google Gemini (super fast) or OpenAI (great for complex questions).
+- **Google Search Power**: Gets the latest info from the web for up-to-the-minute answers (this is the RAG part!).
+- **Talk Normally**: Ask questions in everyday language.
+- **Quick Answers**: Get information fast, like you're texting.
+- **Handles Lots of Data**: Can look through many different spreadsheets or database tables at once.
+- **Saves Your Chats**: Keeps a history of your conversations so you can look back.
+- **Organized Chats**: Start new chats for different topics or projects.
+- **See How It's Used**: Check out graphs and stats on how Nexus360 is helping.
+- **Works Anywhere**: Use it on your computer, tablet, or phone.
+- **Smart Backup**: If one AI brain has a problem, it can switch to the other one automatically.
+
+## 📱 How to Use Nexus360 (For Everyone!)
 
 ### Getting Started
 
-1. **Access**: Navigate to the application URL provided by your administrator
-2. **Login**: Use your provided username and password to log in
-3. **Registration**: If you're a new user, click "Register" to create an account (if enabled)
+1.  **Go to the App**: Open the Nexus360 website link your admin gives you.
+2.  **Log In**: Type in your username and password.
+3.  **New Here?**: If it's your first time, you might need to click "Register" to make an account.
 
-### Using the Chat Interface
-
-The chat interface is designed to be intuitive and similar to popular messaging apps:
-
-1. **Ask Questions**: Type your project-related questions in the text box at the bottom
-2. **View Responses**: The AI will respond within seconds, showing its answers in the chat window
-3. **Star Important Messages**: Click the star icon next to any response to mark it as important
-4. **Refresh Data**: Click the refresh icon to get the latest data from Google Sheets before asking a question
-5. **Continue Conversations**: The AI remembers your previous questions within a session, so you can ask follow-up questions
+### Chatting with Nexus360
 
-### Model Selection
+It’s just like using a messaging app:
 
-You can switch between AI models based on your preference:
-
-1. Use the model selector toggle at the top of the chat interface
-2. Choose "OpenAI" or "Gemini" based on which gives better responses for your specific questions
-3. The system will remember your preference for future sessions
-
-### Chat Sessions
-
-Organize your conversations by topic or project:
-
-1. **Create New Session**: Click "New Chat" to start a fresh conversation
-2. **Switch Sessions**: Use the dropdown to view and switch between different chat sessions
-3. **Rename Sessions**: Click the pencil icon next to a session name to rename it
-4. **Delete Sessions**: Remove unwanted sessions using the trash icon
-
-### Google Search Integration
-
-The chatbot can now access up-to-date information from the web for questions that require current knowledge:
-
-1. **Automatic Detection**: The system automatically detects when a question might benefit from web search
-2. **Seamless Integration**: When the chatbot uses web search data, you'll see source citations in the response
-3. **Source Citations**: Responses using web data include links to the original sources [Source: Example Website (URL)]
-4. **Toggle Feature**: Administrators can enable/disable this feature through the .env settings
-
-To use the Google Search feature:
-
-1. Simply ask questions that might require up-to-date information, such as:
-   - "What are the latest project management trends in 2025?"
-   - "How are companies currently handling remote team collaboration?"
-   - "What's the current best practice for agile sprint planning?"
-
-2. The chatbot will automatically:
-   - Detect that your question needs recent information
-   - Search the web for relevant, current data
-   - Provide an answer that combines its AI knowledge with web search results
-   - Cite sources with links so you can verify the information
-
-### Dashboard and Analytics
- 
-Access insights about your chatbot usage:
-
-1. Navigate to the Dashboard tab to see usage statistics
-2. View charts showing message frequency, model usage, and most active sessions
-3. Get insights into which models are being used most frequently
-
-### Sample Questions
-
-Here are some examples of questions you can ask the chatbot:
-
-#### Project Status
-- "Show me all active projects"
-- "What's the current status of the Website Redesign project?"
-- "Which projects are scheduled to finish this month?"
-- "How many projects are currently on hold?"
-
-#### Budget Queries
-- "Which projects are currently over budget?"
-- "What's the remaining budget for the Marketing Campaign project?"
-- "Show me the top 5 projects by budget size"
-- "Calculate the total budget across all active projects"
-
-#### Timeline and Schedule
-- "When is the Mobile App project scheduled to complete?"
-- "Which projects have deadlines within the next 30 days?"
-- "Show me projects that started in January"
-- "Has the Cloud Migration project deadline been extended?"
-
-#### Team and Resources
-- "Who is working on the E-commerce Platform project?"
-- "Show me all team members with the role 'Developer'"
-- "Which projects does Jane Smith work on?"
-- "How many team members are assigned to the CRM Integration project?"
-
-#### Cross-Sheet Analysis
-- "Compare the budgets between Marketing and Development projects"
-- "Which department has the most active projects?"
-- "Show me all projects related to website development across all departments"
-
-#### Web Search Enhanced Questions (using Google Search API)
-- "What are the latest project management methodologies in 2025?"
-- "How do current economic trends affect project budgeting strategies?"
-- "What are the recent changes to agile frameworks that we should consider?"
-- "Tell me about the newest project management tools released this year"
-- "What best practices have emerged for managing remote project teams?"
-- "What were the outcomes of the recent PMI conference?"
-- "How are companies currently handling AI integration in project workflows?"
-
-#### SQL Database Queries (when using MySQL/PostgreSQL)
-- "Show me the relationship between project budget and timeline delays"
-- "Calculate the average completion rate across all teams"
-- "Identify which clients have the highest number of change requests"
-- "Find patterns in budget overruns across different project types"
-
-## 🛠️ Technical Setup
-
-### Requirements
-
-- Python 3.9+
-- Django 5.0+
-- Django Channels 4.0+ (for WebSockets)
-- OpenAI API key
-- Google Gemini API key
-- Google Sheets API credentials
-- Google Search API credentials
-- MySQL or PostgreSQL (for scaled deployments)
-
-### Installation
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/pm_chatbot.git
-   cd pm_chatbot
-   ```
-
-2. Create and activate a virtual environment:
-   ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-
-### Configuration
-
-1. Create a `.env` file in the project root with the following variables:
-   ```
-   # Django settings
-   DJANGO_SECRET_KEY=your_django_secret_key_here
-   DEBUG=True
-   ALLOWED_HOSTS=localhost,127.0.0.1
-
-   # API keys
-   OPENAI_API_KEY=your_openai_api_key_here
-   GOOGLE_GEMINI_API_KEY=your_gemini_api_key_here
-
-   # Google Sheets configuration
-   GOOGLE_SHEETS_CREDENTIALS_FILE=path_to_your_google_sheets_credentials.json
-   GOOGLE_SHEETS_PROJECT_DB=your_google_sheets_id_here
-   
-   # Optional: Additional sheets in format "name1:id1,name2:id2"
-   ADDITIONAL_SHEETS=Marketing:sheet_id_1,Development:sheet_id_2
-   
-   # Google Search API configuration
-   GOOGLE_SEARCH_API_KEY=your_google_search_api_key_here
-   GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
-   ENABLE_WEB_SEARCH=True
-   
-   # Database configuration (for scaling)
-   DB_TYPE=sqlite  # Options: sqlite, mysql, postgresql
-   # DB_NAME=your_db_name
-   # DB_USER=your_db_username
-   # DB_PASSWORD=your_db_password
-   # DB_HOST=localhost
-   # DB_PORT=5432  # 5432 for PostgreSQL, 3306 for MySQL
-   
-   # Enable SQL Database for chatbot queries
-   USE_SQL_DATABASE=False  # Set to True to use SQL instead of Google Sheets
-   ```
-
-2. Run migrations:
-   ```
-   python manage.py makemigrations
-   python manage.py migrate
-   ```
-
-3. Create an admin user:
-   ```
-   python manage.py create_admin --username admin --password adminpassword --email admin@example.com
-   ```
-
-4. Start the server with WebSocket support (recommended):
-   ```
-   daphne project_chatbot.asgi:application -p 8000
-   ```
-   
-   Alternatively, use the Django development server (limited WebSocket support):
-   ```
-   python manage.py runserver
-   ```
-
-5. Access the application at http://localhost:8000
-
-### Google Search API Setup
-
-To enable the Google Search integration, follow these steps:
-
-1. **Create a Google Cloud Project** (or use your existing one):
-   - Go to the [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project or select your existing project
-
-2. **Enable the Custom Search API**:
-   - In the Google Cloud Console, go to "APIs & Services" > "Library"
-   - Search for "Custom Search API" and click on it
-   - Click "Enable" to activate the API for your project
-
-3. **Create API Credentials**:
-   - Go to "APIs & Services" > "Credentials"
-   - Click "Create Credentials" and select "API Key"
-   - Copy the generated API key
-
-4. **Create a Programmable Search Engine**:
-   - Go to [Programmable Search Engine](https://programmablesearchengine.google.com/)
-   - Click "Add" to create a new search engine
-   - Name your search engine (e.g., "PM_ChatBot")
-   - Select "Search the entire web" (recommended for general knowledge)
-   - Toggle "SafeSearch" ON (recommended)
-   - Toggle "Image search" OFF (unless you need image results)
-   - Click "Create"
-   - After creation, copy your Search Engine ID (a 16-digit code like "16b0e4815604a47f1")
-
-5. **Add Credentials to Environment Variables**:
-   - Open your `.env` file
-   - Add or update the following variables:
-     ```
-     GOOGLE_SEARCH_API_KEY=your_copied_api_key_here
-     GOOGLE_SEARCH_ENGINE_ID=your_copied_search_engine_id_here
-     ENABLE_WEB_SEARCH=True
-     ```
-
-6. **Restart Your Application**:
-   - Restart your Django server for the changes to take effect
-
-7. **Test the Integration**:
-   - Ask a question that requires current information like "What are the latest project management trends in 2025?"
-   - The response should include web search results with source citations
-
-**Important Notes**:
-- The free tier of Google Custom Search API allows 100 queries per day
-- After exceeding the free tier, you will be charged per query (check Google Cloud pricing)
-- The system includes retry logic and rate limiting to help manage API usage
-
-### Database Scaling
-
-As your project grows, you can transition from SQLite to more robust database systems:
-
-#### Migrating to PostgreSQL
-
-1. Install PostgreSQL and necessary Python packages:
-   ```bash
-   pip install psycopg2-binary sqlalchemy
-   ```
-
-2. Create a PostgreSQL database:
-   ```sql
-   CREATE DATABASE pm_chatbot;
-   CREATE USER pm_chatbot_user WITH PASSWORD 'secure_password';
-   GRANT ALL PRIVILEGES ON DATABASE pm_chatbot TO pm_chatbot_user;
-   ```
-
-3. Update your `.env` file:
-   ```
-   DB_TYPE=postgresql
-   DB_NAME=pm_chatbot
-   DB_USER=pm_chatbot_user
-   DB_PASSWORD=secure_password
-   DB_HOST=localhost
-   DB_PORT=5432
-   USE_SQL_DATABASE=True
-   ```
-
-4. Migrate your data:
-   ```bash
-   python manage.py dumpdata --exclude auth.permission --exclude contenttypes > data_backup.json
-   python manage.py migrate
-   python manage.py loaddata data_backup.json
-   ```
-
-#### Migrating to MySQL
-
-1. Install MySQL and necessary Python packages:
-   ```bash
-   pip install mysqlclient mysql-connector-python sqlalchemy
-   ```
-
-2. Create a MySQL database:
-   ```sql
-   CREATE DATABASE pm_chatbot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   CREATE USER 'pm_chatbot_user'@'localhost' IDENTIFIED BY 'secure_password';
-   GRANT ALL PRIVILEGES ON pm_chatbot.* TO 'pm_chatbot_user'@'localhost';
-   FLUSH PRIVILEGES;
-   ```
-
-3. Update your `.env` file:
-   ```
-   DB_TYPE=mysql
-   DB_NAME=pm_chatbot
-   DB_USER=pm_chatbot_user
-   DB_PASSWORD=secure_password
-   DB_HOST=localhost
-   DB_PORT=3306
-   USE_SQL_DATABASE=True
-   ```
-
-4. Migrate your data following the same steps as for PostgreSQL.
-
-#### Using SQL Database for Chatbot Queries
-
-When scaling with a SQL database, you can activate the direct SQL querying feature:
-
-1. Set `USE_SQL_DATABASE=True` in your `.env` file
-2. The chatbot will now query your SQL database directly instead of Google Sheets
-3. For optimal performance, ensure your database tables are properly indexed
-4. Consider setting up read-only credentials for the chatbot to enhance security
-
-#### Benefits of SQL Database Integration
-
-- **Performance**: Handle millions of records with efficient queries
-- **Complex Analysis**: Enable multi-table joins and complex aggregations
-- **Data Integrity**: Leverage database constraints and relationships
-- **Security**: Implement row-level security and user-based permissions
-- **Scalability**: Support concurrent users and growing datasets
-- **Real-time Updates**: Access the most current data instantly
-
-## 👩‍💼 Admin Guide
-
-As an administrator, you have additional capabilities:
-
-1. **User Management**: Access the Django admin panel (/admin) to manage user accounts
-2. **System Monitoring**: View system logs and monitor API usage
-3. **Database Management**: Directly access and update the Google Sheets connection
-4. **Analytics Access**: View detailed analytics about system usage
-5. **Custom Setup**: Configure additional sheets and data connections
-6. **Google Search Configuration**: Enable/disable web search and monitor API usage
-
-## 🔧 Advanced Features
-
-### Real-time Chat with WebSockets
-The application uses Django Channels and WebSockets to provide real-time chat functionality:
-- Instant responses without page reloads
-- Typing indicators when the AI is processing
-- Connection resilience with automatic fallback to AJAX
-
-### Model Switching
-Dynamically switch between AI models:
-- Google Gemini 1.5-Flash: Fast and efficient for most queries
-- OpenAI GPT-4o-mini: Excellent for complex analytical questions
-
-### Google Search Integration
-The chatbot can now access recent information from the web:
-- **Automatic Detection**: System detects when a question might benefit from web search
-- **Source Transparency**: All web-sourced information includes citations with links
-- **Knowledge Extension**: Extends the AI models beyond their knowledge cutoff dates
-- **Configurable**: Easily enable/disable via environment variables
-- **Smart Integration**: Results from web searches are seamlessly blended with AI responses
-- **Rate Limiting**: Built-in handling of API rate limits to prevent overages
-
-### Dashboard Analytics
-Track and analyze your chatbot usage:
-- Message frequency over time
-- Model distribution and usage statistics
-- Most active chat sessions
-
-### Chat Session Management
-- Create multiple chat sessions for different topics
-- Switch between sessions seamlessly
-- View, export, and delete past sessions
-
-### SQL Database Integration
-- Direct natural language queries to SQL databases
-- Automatic SQL query generation from plain English questions
-- Support for complex joins and aggregations
-- Built-in safeguards against harmful queries
-- Explanation of query results in plain language
-- Support for visualization of query results
-
-## ❓ Troubleshooting
-
-**Q: The chatbot doesn't understand my question**  
-A: Try rephrasing your question to be more specific. Include project names, dates, or specific terms that match your Google Sheets data.
-
-**Q: I'm seeing an error about API limits**  
-A: This happens when you've reached the usage limits for the AI models or Google Search API. Wait a few minutes before trying again or switch to the other model.
-
-**Q: The data seems outdated**  
-A: Click the refresh icon before asking your question to get the latest data from Google Sheets.
-
-**Q: The web search isn't providing current information**  
-A: Make sure your Google Search API is correctly configured in the .env file and that you haven't exceeded the daily quota (100 queries for free tier).
-
-**Q: The chatbot mentions sources but doesn't include the full source information**  
-A: Restart the application after configuring the Google Search API. This ensures the improved source citation format is applied.
-
-**Q: How do I disable the web search feature?**  
-A: Set `ENABLE_WEB_SEARCH=False` in your .env file and restart the application.
-
-**Q: The chatbot is slow to respond**  
-A: Complex questions analyzing large datasets or requiring web searches may take longer. Try splitting your question into smaller parts.
-
-**Q: I lost my chat history**  
-A: Chat sessions are saved per user. Make sure you're logged in with the correct account and check the session dropdown.
-
-**Q: How do I switch from Google Sheets to SQL database?**  
-A: Update your `.env` file with the appropriate database credentials and set `USE_SQL_DATABASE=True`. Also, ensure your data is properly migrated to the database.
-
-**Q: The chatbot doesn't understand my database schema**  
-A: For complex database schemas, try providing more context in your questions by mentioning table names or key columns. You can also improve performance by ensuring proper indexing on frequently queried columns.
-
-## 🔒 Security
-
-The application implements standard Django security practices:
-- CSRF protection for all forms
-- WebSocket authentication
-- XSS protection
-- Content-Type sniffing prevention
-- X-Frame-Options set to DENY
-- Google Sheets API used with limited-scope credentials
-- Google Search API with content filtering enabled
-- SQL query sanitization to prevent injection attacks
-- Optional read-only database user for chatbot queries
-
-## 🚀 Production Deployment
-
-For production deployment, we recommend:
-1. Using Daphne or Uvicorn behind a reverse proxy like Nginx
-2. Enabling HTTPS for secure WebSocket connections (WSS)
-3. Setting up Redis as the channel layer backend
-4. **Configuring Production Database**:
-   - PostgreSQL or MySQL with connection pooling
-   - Regular database backups and point-in-time recovery
-   - Database replication for high availability
-   - Proper indexing for optimized query performance
-5. Implementing monitoring for API usage and system performance
-6. Setting up a content delivery network (CDN) for static assets
+1.  **Ask Away**: Type your question in the box at the bottom of the screen and hit Enter or click Send.
+2.  **See the Answer**: Nexus360 will reply in the chat window.
+3.  **Save Important Info**: Click the star icon next to an answer if you want to easily find it later.
+4.  **Fresh Data**: If your data changes often (like in Google Sheets), click the "Refresh Data" button before asking to make sure Nexus360 has the latest info.
+5.  **Follow-Up Questions**: Nexus360 remembers what you’ve talked about in the current chat, so you can ask more questions based on previous answers.
 
+### Choosing Your AI Brain (Model Selection)
+
+You can tell Nexus360 which AI brain to use:
+
+1.  Look for the model selector (it might be a toggle or dropdown) at the top of the chat.
+2.  Choose "OpenAI" or "Gemini." Try both to see which one you like best for different types of questions!
+3.  Nexus360 will remember your choice for next time.
+
+### Keeping Chats Organized (Chat Sessions)
+
+Keep your conversations neat and tidy:
+
+1.  **New Chat**: Click "New Chat" (or similar) to start a brand-new conversation on a new topic.
+2.  **Switch Chats**: Look for a list or dropdown of your past chats to open an old one.
+3.  **Rename Chats**: Usually, there's a little pencil icon to change a chat's name to something more memorable.
+4.  **Delete Chats**: A trash can icon will let you remove chats you don't need anymore.
+
+### Super-Smart Answers with Google Search (RAG)
+
+Sometimes, your questions might be about very recent topics or things your project data doesn't cover. That's where Google Search comes in!
+
+1.  **It's Automatic**: Nexus360 is smart enough to know when your question might need fresh info from the web.
+2.  **Clear and Honest**: If Nexus360 uses Google Search, it will tell you where it got the information by showing you the source (like "[Source: Example Website (URL)]").
+3.  **Always Learning**: This helps the AI give you answers even about things that happened after it was last trained.
+
+**How to use it:**
+
+Just ask your question! If it’s something like:
+
+- "What are the newest project management tools for 2025?"
+- "How are other companies using AI in project management right now?"
+
+Nexus360 will figure out it needs to search the web, find relevant info, and then give you an answer that combines its AI smarts with what it found online.
+
+### What is RAG? (Retrieval Augmented Generation)
+
+You might hear the term **RAG** when we talk about Nexus360's Google Search feature. It stands for **Retrieval Augmented Generation**.
+
+Here's what it means in simple terms:
+
+1.  **Retrieval (Find Stuff)**: When you ask a question, especially one needing current info, Nexus360 first *retrieves* (finds and pulls out) relevant information. This could be from your project data or, in this case, from Google Search results.
+2.  **Augmented (Make it Better)**: The information it finds is then used to *augment* (add to or improve) what the AI already knows. It gives the AI extra, up-to-date context.
+3.  **Generation (Create the Answer)**: Finally, the AI *generates* (creates) an answer for you, using both its built-in knowledge AND the new information it just found.
+
+So, RAG is just a fancy way of saying Nexus360 doesn't just rely on what it was taught; it actively looks for new information to give you the best, most current answers possible! This makes it much smarter and more helpful, especially for topics that change quickly.
+
+### Seeing How You Use Nexus360 (Dashboard and Analytics)
+
+Curious about how much you or your team are using Nexus360?
+
+1.  Look for a "Dashboard" or "Analytics" tab or link.
+2.  Here you can see charts and stats, like how many messages are sent, which AI brain is used most, and which chat topics are popular.
+
+### Example Questions to Ask
+
+Here are some ideas to get you started:
+
+**About Your Projects:**
+
+- "Show me all projects that are currently active."
+- "What's the status of the 'Website Update' project?"
+- "Which projects are supposed to finish this month?"
+
+**About Money and Budgets:**
+
+- "Are any projects over budget?"
+- "How much money is left for the 'Marketing Push' project?"
+- "Show me the top 5 projects by budget."
+
+**About Deadlines and Schedules:**
+
+- "When is the 'Mobile App Launch' planned?"
+- "Which projects have deadlines in the next two weeks?"
+
+**About Your Team:**
+
+- "Who is working on the 'Client Demo' project?"
+- "Show me all developers on the team."
+
+**Questions Using Web Search (RAG examples for current info):**
+
+- "What are the latest trends in project management for 2025?"
+- "How are companies using AI in project management today?"
+- "What new project tools came out this year?"
+
+## For the Tech-Savvy (Technical Setup)
+
+This part is for those who will be installing and managing Nexus360.
+
+### What You Need
+
+- Python (version 3.9 or newer)
+- Django (a web framework, version 5.0 or newer)
+- Django Channels (for live chat, version 4.0 or newer)
+- API keys (special codes to connect to services) for:
+  - OpenAI
+  - Google Gemini
+  - Google Sheets
+  - Google Search
+- A database like MySQL or PostgreSQL if you have a LOT of data (otherwise, SQLite works fine for smaller setups).
+
+### Getting it Running
+
+1.  **Download the Code**: Usually from a place like GitHub.
+
+    ```bash
+    git clone https://github.com/yourusername/pm_chatbot.git
+    cd pm_chatbot
+    ```
+
+2.  **Set Up a Virtual Space**: This keeps all the project's code bits separate.
+
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
+
+3.  **Install the Parts**: This command reads a list of all the bits Nexus360 needs and installs them.
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+### Setting Things Up (Configuration)
+
+1.  **Create a Secret File (`.env`)**: In the main project folder, make a file named `.env`. This is where you'll put all your secret keys and settings. Here's an example of what goes in it:
+
+    ```env
+    # Django settings
+    DJANGO_SECRET_KEY=your_very_secret_django_key_here # Make this long and random!
+    DEBUG=True  # Set to False for real-world use
+    ALLOWED_HOSTS=localhost,127.0.0.1 # Add your server address for real-world use
+
+    # API keys
+    OPENAI_API_KEY=your_openai_api_key_here
+    GOOGLE_GEMINI_API_KEY=your_gemini_api_key_here
+
+    # Google Sheets (where your project data might be)
+    GOOGLE_SHEETS_CREDENTIALS_FILE=path/to/your/google_sheets_credentials.json # A special file from Google
+    GOOGLE_SHEETS_PROJECT_DB=the_id_of_your_main_google_sheet
+    
+    # Optional: If you have more Google Sheets to connect
+    # ADDITIONAL_SHEETS=SheetName1:sheet_id_1,SheetName2:sheet_id_2
+    
+    # Google Search API (for RAG)
+    GOOGLE_SEARCH_API_KEY=your_google_search_api_key_here
+    GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_from_google_here
+    ENABLE_WEB_SEARCH=True # Set to False to turn off Google Search
+    
+    # Database (SQLite is default, good for starting)
+    DB_TYPE=sqlite
+    # If using MySQL or PostgreSQL, you'll add more lines here for name, user, password, etc.
+    # DB_NAME=your_db_name
+    # DB_USER=your_db_username
+    # DB_PASSWORD=your_db_password
+    # DB_HOST=localhost
+    # DB_PORT=5432  # 5432 for PostgreSQL, 3306 for MySQL
+    
+    # Tell Nexus360 to use your big database for answers (instead of Google Sheets)
+    USE_SQL_DATABASE=False  # Set to True if you set up MySQL/PostgreSQL above
+    ```
+
+2.  **Prepare the Database**:
+
+    ```bash
+    python manage.py makemigrations
+    python manage.py migrate
+    ```
+
+3.  **Create an Admin User**: This user can manage Nexus360 from a special admin page.
+
+    ```bash
+    python manage.py create_admin --username youradmin --password yourstrongpassword --email admin@example.com
+    ```
+
+4.  **Start the App**: For the best experience with live chat, use Daphne.
+
+    ```bash
+    daphne project_chatbot.asgi:application -p 8000
+    ```
+
+    Or, for simpler testing (live chat might not be as smooth):
+
+    ```bash
+    python manage.py runserver
+    ```
+
+5.  **Open in Browser**: Go to `http://localhost:8000` in your web browser.
+
+### Connecting to Google Search
+
+To let Nexus360 use Google Search (for the RAG feature):
+
+1.  **Google Cloud Project**: You need a project in Google Cloud Console. Create one if you don't have it.
+2.  **Turn on "Custom Search API"**: In your Google Cloud project, find this API in the "Library" and enable it.
+3.  **Get an API Key**: In "Credentials," create a new API Key. Copy this key.
+4.  **Create a Programmable Search Engine**:
+    - Go to the [Programmable Search Engine](https://programmablesearchengine.google.com/) site.
+    - Click "Add" to make a new search engine.
+    - Give it a name (e.g., "Nexus360_Search").
+    - Choose "Search the entire web."
+    - Turn "SafeSearch" ON.
+    - Turn "Image search" OFF (unless you need it).
+    - Click "Create."
+    - After it's made, find and copy its "Search Engine ID" (it's a long code).
+
+5.  **Put Keys in `.env` File**: Add/update these lines in your `.env` file:
+
+    ```env
+    GOOGLE_SEARCH_API_KEY=paste_your_api_key_here
+    GOOGLE_SEARCH_ENGINE_ID=paste_your_search_engine_id_here
+    ENABLE_WEB_SEARCH=True
+    ```
+
+6.  **Restart Nexus360**: Stop and start the app so it sees the new settings.
+
+7.  **Test It**: Ask a question that needs very current info, like "What are the latest AI trends in 2025?" You should see answers that mention web sources.
+
+**Important Notes on Google Search**:
+
+- Google gives you 100 free searches per day. After that, they charge a small amount per search.
+- Nexus360 tries to be smart about not using the API too much.
+
+### Using Bigger Databases
+
+If you have tons of data, SQLite might get slow. You can switch to PostgreSQL or MySQL.
+
+**Switching to PostgreSQL (Example)**:
+
+1.  **Install PostgreSQL tools**: `pip install psycopg2-binary sqlalchemy`
+2.  **Set up a PostgreSQL database**: Create a database and a user for Nexus360.
+3.  **Update `.env` file**: Change `DB_TYPE` to `postgresql` and add your database details (name, user, password, host, port). Set `USE_SQL_DATABASE=True`.
+4.  **Move Your Data**: This is a bit technical. You'll need to back up data from SQLite and load it into PostgreSQL, then run `python manage.py migrate`.
+
+(Similar steps apply for MySQL, just with different tools and settings.)
+
+**Why use a bigger database?**
+
+- **Faster**: Handles millions of records better.
+- **More Powerful Questions**: Can do more complex data analysis.
+- **Safer Data**: Better tools for keeping data secure and backed up.
+
+## 👩‍💼 For System Admins (Admin Guide)
+
+If you're managing Nexus360 for your team:
+
+1.  **Manage Users**: Go to the `/admin` page on your Nexus360 website to add users, change passwords, etc.
+2.  **Keep an Eye on Things**: Check system logs and how much the APIs (OpenAI, Gemini, Google Search) are being used.
+3.  **Data Connections**: Manage how Nexus360 connects to Google Sheets or your SQL database.
+4.  **Check Usage Stats**: Look at the analytics dashboard to see how the team is using the app.
+5.  **Google Search Settings**: You can turn the web search feature on or off in the `.env` file.
+
+## 🔧 Extra Cool Tech Features
+
+- **Live Chat**: Uses WebSockets so answers appear instantly without reloading the page.
+- **Switch AI Brains**: Easily change between Google Gemini and OpenAI.
+- **Smart Web Search (RAG)**:
+  - Figures out when to search the web.
+  - Clearly shows where web info came from.
+  - Helps the AI know about brand new topics.
+  - Can be turned on/off.
+- **Usage Dashboard**: See charts on how the chatbot is being used.
+- **Organized Chat History**: Manage multiple conversations easily.
+- **Talk to SQL Databases**: If you connect a SQL database, you can ask complex questions about your data in plain English, and Nexus360 tries to figure out the technical SQL query for you!
+
+## ❓ Help! Something Went Wrong (Troubleshooting)
+
+### Q: Nexus360 doesn't understand my question
+
+**A:** Try asking in a different way. Be more specific. Use names or dates that are in your project data.
+
+### Q: It says "API limit reached"
+
+**A:** This means you've used the AI (OpenAI/Gemini) or Google Search too much for a short period (often there are daily or monthly free limits). Wait a bit and try again, or try switching to the other AI model.
+
+### Q: The project data seems old
+
+**A:** If you're using Google Sheets, click the "Refresh Data" button in the chat interface before asking your question.
+
+### Q: Web search isn't giving me new info
+
+**A:** Double-check that the Google Search API Key and Engine ID are correct in your `.env` file. Also, make sure you haven't used up your 100 free daily searches.
+
+### Q: It mentions web sources but doesn't show the links properly
+
+**A:** Make sure you restart Nexus360 after setting up the Google Search API in the `.env` file.
+
+### Q: How do I turn off the Google Search feature
+
+**A:** In the `.env` file, change `ENABLE_WEB_SEARCH=True` to `ENABLE_WEB_SEARCH=False` and restart Nexus360.
+
+### Q: Nexus360 is slow
+
+**A:** Very complex questions or questions that need a lot of web searching can take a bit longer. Try breaking your question into smaller parts.
+
+### Q: I can't find my old chats
+
+**A:** Make sure you are logged in with the correct account. Your chats are saved under your username. Check the list of your chat sessions.
+
+### Q: How do I switch from using Google Sheets to a big SQL database
+
+**A:** This is a technical step. You need to set up your SQL database (like PostgreSQL or MySQL), update the `.env` file with its details, set `USE_SQL_DATABASE=True`, and then carefully move your data from Google Sheets into the new database.
+
+## 🔒 Keeping Things Safe (Security)
+
+Nexus360 uses standard security measures for web apps:
+
+- Protects against common web attacks.
+- Keeps your chat sessions private.
+- Uses Google API connections carefully with limited permissions.
+- Tries to prevent harmful database queries if connected to SQL.
+
+## 🚀 Using Nexus360 for Real (Production Deployment)
+
+This is for tech teams making Nexus360 available for many users:
+
+1.  Use robust web servers like Daphne or Uvicorn, often with Nginx.
+2.  Use HTTPS (secure web connections) for everything, especially live chat.
+3.  For busy sites, use Redis to help manage live chat messages.
+4.  **Database**: Use a strong database like PostgreSQL or MySQL. Set up regular backups.
 
 ---
 
-<div align="center">
-  <p>Developed by Avishek Paul</p>
-  <p>© 2025 All Rights Reserved</p>
-</div>
+*Nexus360 - Making project data easy to understand for everyone.*
