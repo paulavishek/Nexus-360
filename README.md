@@ -183,8 +183,8 @@ This part is for those who will be installing and managing Nexus360.
 1.  **Download the Code**: Usually from a place like GitHub.
 
     ```bash
-    git clone https://github.com/yourusername/pm_chatbot.git
-    cd pm_chatbot
+    git clone https://github.com/paulavishek/Nexus-360.git
+    cd Nexus-360
     ```
 
 2.  **Set Up a Virtual Space**: This keeps all the project's code bits separate.
