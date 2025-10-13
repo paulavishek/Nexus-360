@@ -91,7 +91,7 @@ class GeminiClient:
             
             # Configure the model - using the latest available Gemini model name with parameters
             model = genai.GenerativeModel(
-                model_name='gemini-1.5-flash',
+                model_name='gemini-2.5-flash',  # Updated to use Gemini 2.5 Flash
                 generation_config=generation_config,
                 safety_settings=safety_settings
             )
