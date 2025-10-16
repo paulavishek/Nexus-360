@@ -118,18 +118,30 @@ def chat(request):
             model=response.get('source', 'gemini')
         )
         
-        # Update analytics
-        today = timezone.now().date()
-        analytics, _ = ChatAnalytics.objects.get_or_create(user=request.user, date=today)
-        analytics.messages_sent += 1
-        
-        # Increment the appropriate counter based on which model was used
-        if response.get('source') == 'gemini':
-            analytics.gemini_requests += 1
-        elif response.get('source') in ['openai', 'openai-fallback']:
-            analytics.openai_requests += 1
+        # Update analytics with proper error handling
+        try:
+            today = timezone.now().date()
+            analytics, created = ChatAnalytics.objects.get_or_create(
+                user=request.user, 
+                date=today,
+                defaults={
+                    'messages_sent': 0,
+                    'gemini_requests': 0,
+                    'openai_requests': 0
+                }
+            )
+            analytics.messages_sent += 1
             
-        analytics.save()
+            # Increment the appropriate counter based on which model was used
+            if response.get('source') == 'gemini':
+                analytics.gemini_requests += 1
+            elif response.get('source') in ['openai', 'openai-fallback']:
+                analytics.openai_requests += 1
+                
+            analytics.save()
+        except Exception as analytics_error:
+            # Log the error but don't fail the request
+            print(f"Error updating analytics: {analytics_error}")
         
         return JsonResponse({
             'response': response['response'],

@@ -143,7 +143,7 @@ class ChatAnalytics(models.Model):
     Model to store analytics data about chat usage
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_analytics')
-    date = models.DateField(auto_now_add=True)
+    date = models.DateField()
     messages_sent = models.IntegerField(default=0)
     gemini_requests = models.IntegerField(default=0)
     openai_requests = models.IntegerField(default=0)
@@ -151,6 +151,9 @@ class ChatAnalytics(models.Model):
     class Meta:
         unique_together = ['user', 'date']
         verbose_name_plural = 'Chat analytics'
+        indexes = [
+            models.Index(fields=['user', 'date']),
+        ]
     
     def __str__(self):
         return f"Analytics for {self.user.username} on {self.date.strftime('%Y-%m-%d')}"
