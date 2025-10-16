@@ -697,7 +697,7 @@
                 <i class="fas fa-download"></i>
             </button>
             <div class="chat-container" id="chat-container">
-                <div class="bot-message message">
+                <div class="bot-message message" id="welcome-message">
                     <div class="message-header">
                         <span>Assistant</span>
                         <span class="message-timestamp">Just now</span>
@@ -1342,6 +1342,9 @@
 
             // Only add user message to chat if not retrying
             if (!isRetry) {
+                // Remove the welcome message if it exists (first user interaction)
+                $('#welcome-message').remove();
+                
                 const userMessageElement = addMessage(message, 'user');
                 
                 // Clear input
@@ -1518,8 +1521,27 @@
                             );
                         });
                     } else {
-                        // Add a welcome message if no messages
-                        addMessage('Starting a new conversation. How can I help you today?', 'bot', 'System');
+                        // Add a welcome message if no messages (new empty session)
+                        let welcomeHTML = `
+                        <div class="bot-message message" id="welcome-message">
+                            <div class="message-header">
+                                <span>Assistant</span>
+                                <span class="message-timestamp">${getCurrentTimestamp()}</span>
+                            </div>
+                            <div>Hello! I'm your database assistant. How can I help you today?</div>
+                            <div class="message-source">
+                                <i class="fas fa-robot me-1"></i> Google Gemini 2.5-Flash <span class="model-badge gemini">Gemini</span>
+                            </div>
+                            <div class="message-actions">
+                                <button class="message-action-btn copy-btn" title="Copy to clipboard">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button class="message-action-btn star-btn" title="Star this conversation">
+                                    <i class="fas fa-star-half-alt"></i>
+                                </button>
+                            </div>
+                        </div>`;
+                        chatContainer.prepend(welcomeHTML);
                     }
                     
                     // Reconnect WebSocket for the new session
@@ -1639,14 +1661,14 @@
                         
                         // Show welcome message
                         let welcomeHTML = `
-                        <div class="bot-message message">
+                        <div class="bot-message message" id="welcome-message">
                             <div class="message-header">
                                 <span>Assistant</span>
                                 <span class="message-timestamp">${getCurrentTimestamp()}</span>
                             </div>
                             <div>Hello! I'm your database assistant. How can I help you today?</div>
                             <div class="message-source">
-                                <i class="fas fa-info-circle me-1"></i> System
+                                <i class="fas fa-robot me-1"></i> Google Gemini 2.5-Flash <span class="model-badge gemini">Gemini</span>
                             </div>
                             <div class="message-actions">
                                 <button class="message-action-btn copy-btn" title="Copy to clipboard">
@@ -1658,7 +1680,7 @@
                             </div>
                         </div>`;
                         
-                        chatContainer.append(welcomeHTML);
+                        chatContainer.prepend(welcomeHTML);
                     },
                     error: function(xhr, status, error) {
                         // Show error message
