@@ -710,7 +710,7 @@
                     {% endif %}
                     </div>
                     <div class="message-source">
-                        <i class="fas fa-robot me-1"></i> Google Gemini 1.5-Flash <span class="model-badge gemini">Gemini</span>
+                        <i class="fas fa-robot me-1"></i> Google Gemini 2.5-Flash <span class="model-badge gemini">Gemini</span>
                     </div>
                     <div class="message-actions">
                         <button class="message-action-btn copy-btn" title="Copy to clipboard">
@@ -740,7 +740,7 @@
         
         <p class="text-center text-muted small mt-3">
             <i class="fas fa-info-circle me-1"></i> 
-            Using <span id="current-model">Google Gemini 1.5-Flash</span> | 
+            Using <span id="current-model">Google Gemini 2.5-Flash</span> | 
             <a href="{% url 'chatbot:dashboard' %}" class="text-muted">View Analytics</a>
         </p>
     </div>
@@ -932,7 +932,7 @@
                 case 'gemini':
                     return {
                         icon: '<i class="fas fa-robot me-1"></i>',
-                        name: 'Google Gemini 1.5-Flash',
+                        name: 'Google Gemini 2.5-Flash',
                         badge: '<span class="model-badge gemini">Gemini</span>'
                     };
                 case 'openai':
@@ -1123,7 +1123,7 @@
                             if (msg.source) {
                                 // Extract model name from source string
                                 const modelNames = {
-                                    'Google Gemini 1.5-Flash': 'gemini',
+                                    'Google Gemini 2.5-Flash': 'gemini',
                                     'OpenAI GPT-4o-mini': 'openai',
                                     'OpenAI GPT-4o-mini (Fallback)': 'openai-fallback'
                                 };
@@ -1454,7 +1454,7 @@
             
             // Update model text in the footer
             if (selectedModel === 'gemini') {
-                currentModelText.text('Google Gemini 1.5-Flash');
+                currentModelText.text('Google Gemini 2.5-Flash');
             } else {
                 currentModelText.text('OpenAI GPT-4o-mini');
             }

@@ -236,7 +236,7 @@
             {% if message.role == 'assistant' and message.model %}
             <div class="message-source">
                 {% if 'gemini' in message.model %}
-                <i class="fas fa-robot me-1"></i> Google Gemini 1.5-Flash <span class="model-badge gemini">Gemini</span>
+                <i class="fas fa-robot me-1"></i> Google Gemini 2.5-Flash <span class="model-badge gemini">Gemini</span>
                 {% elif 'openai' in message.model %}
                 <i class="fas fa-robot me-1"></i> OpenAI GPT-4o-mini <span class="model-badge openai">GPT</span>
                 {% endif %}
