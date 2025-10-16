@@ -163,7 +163,7 @@ class OpenAIClient:
         try:
             # Attempt to use Gemini as a fallback
             response = self.gemini_client.get_chatbot_response(prompt, database_data, history, context)
-            return f"{response}\n\n(Answered using backup AI service due to high demand on primary service)"
+            return f"{response}\n\n(Answered using Google Gemini 2.5-Flash as backup due to OpenAI being temporarily unavailable)"
         except Exception as e:
             print(f"Gemini fallback error: {e}")
             return (
