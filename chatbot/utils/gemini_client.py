@@ -24,7 +24,7 @@ class GeminiClient:
         # Configure the Gemini API client
         genai.configure(api_key=api_key)
         
-    def get_chatbot_response(self, prompt, database_data=None, history=None, context=None):
+    def get_chatbot_response(self, prompt, database_data=None, history=None, context=None, use_fallback=True):
         """
         Get response from Gemini API
         
@@ -33,6 +33,7 @@ class GeminiClient:
             database_data (dict): Database data to inform the chatbot
             history (list): Chat history for context
             context (str): Additional context for the chatbot
+            use_fallback (bool): Whether to use fallback on errors (not used for Gemini, kept for compatibility)
             
         Returns:
             str: Chatbot response

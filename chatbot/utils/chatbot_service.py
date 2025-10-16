@@ -102,7 +102,7 @@ class ChatbotService:
             print(f"Error clearing cache: {e}")
             return False
 
-    def get_response(self, prompt, context=None, history=None, use_cache=True, sheet_name=None):
+    def get_response(self, prompt, context=None, history=None, use_cache=True, sheet_name=None, preferred_model='gemini'):
         """
         Get chatbot response
         
@@ -112,6 +112,7 @@ class ChatbotService:
             history (list): Chat history for context
             use_cache (bool): Whether to use cached data. Set to False to force a fresh data fetch.
             sheet_name (str): Optional specific sheet/table name to focus on
+            preferred_model (str): Preferred model to use ('gemini' or 'openai')
             
         Returns:
             dict: Response with source information
@@ -240,21 +241,34 @@ class ChatbotService:
             context_text += f"\n{search_context}\n"
             
         try:
-            # Determine which model is currently active
-            model_name = 'gemini'
-            if isinstance(self.gemini_client, OpenAIClient):
-                model_name = 'openai'
+            # Select the appropriate client based on preferred model
+            if preferred_model == 'openai':
+                primary_client = self.openai_client
+                fallback_client = self.gemini_client
+                primary_model_name = 'openai'
+                fallback_model_name = 'gemini'
+            else:
+                primary_client = self.gemini_client
+                fallback_client = self.openai_client
+                primary_model_name = 'gemini'
+                fallback_model_name = 'openai'
             
             # Modify prompt if search results were used
             enhanced_prompt = prompt
             if search_context:
                 # No need to modify the prompt, as we'll be passing the search results as context
-                source = f"{model_name}-with-search"
+                source = f"{primary_model_name}-with-search"
             else:
-                source = model_name
+                source = primary_model_name
                 
-            # Use the selected model
-            response = self.gemini_client.get_chatbot_response(enhanced_prompt, database_data, history, context_text)
+            # Use the selected model WITHOUT its built-in fallback
+            response = primary_client.get_chatbot_response(
+                enhanced_prompt, 
+                database_data, 
+                history, 
+                context_text,
+                use_fallback=False  # Disable built-in fallback
+            )
             
             return {
                 'response': response,
@@ -264,10 +278,27 @@ class ChatbotService:
             }
         except Exception as e:
             error_message = str(e)
-            print(f"Model error: {e}")
+            print(f"Primary model ({primary_model_name}) error: {e}")
             
-            # Fall back to the other model
-            return self._try_fallback_model(prompt, database_data, history, context_text, error_message)
+            # Only fall back if it's a rate limit or temporary error, not for API key issues
+            if "api key" in error_message.lower() or "authentication" in error_message.lower():
+                return {
+                    'response': f"There's an issue with the {primary_model_name.upper()} API configuration. Please check your API key settings.",
+                    'source': 'error',
+                    'error': error_message
+                }
+            
+            # Try fallback model with proper labeling
+            print(f"Attempting fallback to {fallback_model_name}")
+            return self._try_fallback_model(
+                prompt, 
+                database_data, 
+                history, 
+                context_text, 
+                error_message,
+                fallback_client,
+                fallback_model_name
+            )
     
     def _is_sql_query(self, prompt):
         """
@@ -346,7 +377,7 @@ class ChatbotService:
         md_table = df.to_markdown(index=False)
         return md_table + footer
     
-    def _try_fallback_model(self, prompt, database_data, history, context_text, error_message):
+    def _try_fallback_model(self, prompt, database_data, history, context_text, error_message, fallback_client, fallback_model_name):
         """
         Try fallback model with exponential backoff for rate limit errors
         
@@ -356,6 +387,8 @@ class ChatbotService:
             history (list): Chat history
             context_text (str): Additional context
             error_message (str): Error message from the first model
+            fallback_client: The client to use for fallback
+            fallback_model_name (str): Name of the fallback model
             
         Returns:
             dict: Response with source information
@@ -363,15 +396,16 @@ class ChatbotService:
         max_retries = self.rate_limit_retries
         base_delay = self.rate_limit_cooldown
         
-        # Determine which model is being used as fallback
-        fallback_model_name = 'openai'
-        if isinstance(self.openai_client, GeminiClient):
-            fallback_model_name = 'gemini'
-        
         for attempt in range(max_retries):
             try:
-                print(f"Using fallback model (attempt {attempt + 1}/{max_retries})")
-                fallback_response = self.openai_client.get_chatbot_response(prompt, database_data, history, context_text)
+                print(f"Using fallback model {fallback_model_name} (attempt {attempt + 1}/{max_retries})")
+                fallback_response = fallback_client.get_chatbot_response(
+                    prompt, 
+                    database_data, 
+                    history, 
+                    context_text,
+                    use_fallback=False  # Disable nested fallback
+                )
                 return {
                     'response': fallback_response,
                     'source': fallback_model_name,
@@ -382,47 +416,13 @@ class ChatbotService:
                 
                 # Check if it's a rate limit error
                 if "rate limit" in error_str or "too many requests" in error_str or "429" in error_str:
-                    # If this is the last attempt, try again with a simplified prompt
+                    # If this is the last attempt, return error
                     if attempt == max_retries - 1:
-                        print(f"Fallback model error, trying with simplified prompt")
-                        try:
-                            # Try with a simplified prompt 
-                            simplified_prompt = f"Please answer this question concisely: {prompt}"
-                            
-                            # Determine which model to try for the simplified prompt
-                            # Try both models starting with the one that hasn't been tried yet
-                            try:
-                                simplified_response = self.openai_client.get_chatbot_response(
-                                    simplified_prompt, database_data, None, context_text
-                                )
-                                return {
-                                    'response': simplified_response,
-                                    'source': fallback_model_name,
-                                    'error': None
-                                }
-                            except Exception:
-                                # If fallback fails, try original model with simplified prompt
-                                simplified_response = self.gemini_client.get_chatbot_response(
-                                    simplified_prompt, database_data, None, context_text
-                                )
-                                
-                                # Determine which model was used for the retry
-                                retry_model_name = 'gemini'
-                                if isinstance(self.gemini_client, OpenAIClient):
-                                    retry_model_name = 'openai'
-                                    
-                                return {
-                                    'response': simplified_response,
-                                    'source': retry_model_name,
-                                    'error': None
-                                }
-                        except Exception:
-                            # Both models failed, return a friendly error
-                            return {
-                                'response': "I'm sorry, I'm having trouble processing your request right now. Please try again in a few minutes.",
-                                'source': 'error',
-                                'error': "All models experienced issues processing the request"
-                            }
+                        return {
+                            'response': "I'm sorry, both AI services are currently experiencing high demand. Please try again in a few minutes.",
+                            'source': 'error',
+                            'error': "All models experiencing rate limits"
+                        }
                     
                     # Calculate delay with jitter (random variation)
                     delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
@@ -436,7 +436,8 @@ class ChatbotService:
                         'source': 'error',
                         'error': f"Error: {str(fallback_error)}"
                     }
-          # If we've exhausted all retries
+        
+        # If we've exhausted all retries
         return {
             'response': "I'm experiencing connectivity issues. Please try again later.",
             'source': 'error',

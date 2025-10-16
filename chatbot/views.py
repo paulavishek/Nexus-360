@@ -96,19 +96,18 @@ def chat(request):
         # Get response from chatbot service
         chatbot = ChatbotService()
         
-        # Override default model if needed
-        if selected_model == 'openai':
-            # Swap OpenAI to be primary
-            temp = chatbot.gemini_client
-            chatbot.gemini_client = chatbot.openai_client
-            chatbot.openai_client = temp
-        
         # Prepare context with sheet name if provided
         context = None
         if sheet_name:
             context = f"Focus on data from the '{sheet_name}' sheet for this query."
             
-        response = chatbot.get_response(message, context, history, use_cache=not refresh_data)
+        response = chatbot.get_response(
+            message, 
+            context, 
+            history, 
+            use_cache=not refresh_data,
+            preferred_model=selected_model  # Pass the selected model directly
+        )
         
         # Save assistant response to database
         ChatMessage.objects.create(

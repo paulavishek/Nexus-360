@@ -25,7 +25,7 @@ class OpenAIClient:
             print(f"Gemini client initialization error: {e}")
             self.gemini_available = False
         
-    def get_chatbot_response(self, prompt, database_data=None, history=None, context=None):
+    def get_chatbot_response(self, prompt, database_data=None, history=None, context=None, use_fallback=True):
         """
         Get response from OpenAI API using GPT-4o-mini with improved error handling
         and exponential backoff for rate limits. Falls back to Gemini if necessary.
@@ -35,6 +35,7 @@ class OpenAIClient:
             database_data (dict): Database data to inform the chatbot
             history (list): Chat history for context
             context (str): Additional context for the chatbot
+            use_fallback (bool): Whether to use Gemini fallback on errors (default: True)
             
         Returns:
             str: Chatbot response
@@ -96,9 +97,12 @@ class OpenAIClient:
                     time.sleep(delay)
                     continue
                 else:
-                    # Try Gemini fallback after exhausting OpenAI retries
-                    return self._use_gemini_fallback(prompt, database_data, history, context, 
-                                                   "OpenAI API request timed out")
+                    # Only use fallback if enabled
+                    if use_fallback:
+                        return self._use_gemini_fallback(prompt, database_data, history, context, 
+                                                       "OpenAI API request timed out")
+                    else:
+                        raise Exception("OpenAI API request timed out after maximum retries")
                     
             except openai.RateLimitError:
                 if retries < self.max_retries:
@@ -108,15 +112,21 @@ class OpenAIClient:
                     time.sleep(delay)
                     continue
                 else:
-                    # Try Gemini fallback for rate limit errors
-                    return self._use_gemini_fallback(prompt, database_data, history, context, 
-                                                   "OpenAI rate limit exceeded")
+                    # Only use fallback if enabled
+                    if use_fallback:
+                        return self._use_gemini_fallback(prompt, database_data, history, context, 
+                                                       "OpenAI rate limit exceeded")
+                    else:
+                        raise Exception("OpenAI rate limit exceeded")
                     
             except openai.APIError as e:
                 error_message = str(e)
                 if "model_not_found" in error_message:
-                    return self._use_gemini_fallback(prompt, database_data, history, context, 
-                                                   "OpenAI model not found")
+                    if use_fallback:
+                        return self._use_gemini_fallback(prompt, database_data, history, context, 
+                                                       "OpenAI model not found")
+                    else:
+                        raise Exception("OpenAI model not found")
                 elif "context_length_exceeded" in error_message:
                     return "Your conversation is too long for me to process. Please try starting a new conversation or ask a shorter question."
                 else:
@@ -127,15 +137,24 @@ class OpenAIClient:
                         time.sleep(delay)
                         continue
                     else:
-                        return self._use_gemini_fallback(prompt, database_data, history, context, error_message)
+                        if use_fallback:
+                            return self._use_gemini_fallback(prompt, database_data, history, context, error_message)
+                        else:
+                            raise Exception(f"OpenAI API error: {error_message}")
                         
             except Exception as e:
                 print(f"Unexpected error with OpenAI API: {e}")
-                return self._use_gemini_fallback(prompt, database_data, history, context, str(e))
+                if use_fallback:
+                    return self._use_gemini_fallback(prompt, database_data, history, context, str(e))
+                else:
+                    raise
                 
         # This should rarely happen since we return from the loop
-        return self._use_gemini_fallback(prompt, database_data, history, context, 
-                                       "Maximum retries exceeded")
+        if use_fallback:
+            return self._use_gemini_fallback(prompt, database_data, history, context, 
+                                           "Maximum retries exceeded")
+        else:
+            raise Exception("Maximum retries exceeded")
     
     def _use_gemini_fallback(self, prompt, database_data, history, context, error_reason):
         """
