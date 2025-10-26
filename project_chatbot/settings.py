@@ -203,20 +203,8 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 GOOGLE_SHEETS_CREDENTIALS_FILE = os.getenv('GOOGLE_SHEETS_CREDENTIALS_FILE')
 GOOGLE_SHEETS_PROJECT_DB = os.getenv('GOOGLE_SHEETS_PROJECT_DB')
 
-# Get Gemini API key from .env
-# Parse it from the .env file since it's commented out
-def parse_gemini_api_key():
-    try:
-        with open(os.path.join(BASE_DIR, '.env')) as env_file:
-            for line in env_file:
-                if 'Gemini API' in line and '=' in line:
-                    key = line.split('=')[1].strip()
-                    return key
-    except Exception as e:
-        print(f"Error parsing Gemini API key: {e}")
-    return None
-
-GOOGLE_GEMINI_API_KEY = os.getenv('GOOGLE_GEMINI_API_KEY', parse_gemini_api_key())
+# Get Gemini API key from .env - simplified to just use environment variable
+GOOGLE_GEMINI_API_KEY = os.getenv('GOOGLE_GEMINI_API_KEY')
 
 # Security settings
 SECURE_CONTENT_TYPE_NOSNIFF = True

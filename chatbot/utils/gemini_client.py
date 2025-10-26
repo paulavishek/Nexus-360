@@ -11,15 +11,19 @@ class GeminiClient:
         # Get API key from settings
         api_key = getattr(settings, 'GOOGLE_GEMINI_API_KEY', None)
         
+        # Fallback: Try to get from environment directly
         if not api_key:
-            # Extract from environment variable if available
-            api_key_line = next((line for line in open(os.path.join(settings.BASE_DIR, '.env')).readlines() 
-                            if 'Gemini API' in line), None)
-            if api_key_line:
-                api_key = api_key_line.split('=')[1].strip()
+            api_key = os.getenv('GOOGLE_GEMINI_API_KEY')
+        
+        # Remove any whitespace or newlines
+        if api_key:
+            api_key = api_key.strip()
         
         if not api_key:
-            raise ValueError("Google Gemini API key is not configured.")
+            raise ValueError("Google Gemini API key is not configured. Please set GOOGLE_GEMINI_API_KEY in your .env file.")
+        
+        # Store the API key for later use
+        self.api_key = api_key
             
         # Configure the Gemini API client
         genai.configure(api_key=api_key)
@@ -39,6 +43,9 @@ class GeminiClient:
             str: Chatbot response
         """
         try:
+            # Re-configure API key to ensure it's set (fixes some API key errors)
+            genai.configure(api_key=self.api_key)
+            
             # Create a system prompt with context that allows for both database and general knowledge questions
             system_message = """
             You are a helpful assistant that can answer both database-related questions and general knowledge questions.
@@ -91,8 +98,9 @@ class GeminiClient:
             ]
             
             # Configure the model - using the latest available Gemini model name with parameters
+            # Explicitly pass API key to ensure it's used
             model = genai.GenerativeModel(
-                model_name='gemini-2.5-flash',  # Updated to use Gemini 2.5 Flash
+                model_name='gemini-2.0-flash-exp',  # Using a more stable model
                 generation_config=generation_config,
                 safety_settings=safety_settings
             )
@@ -127,8 +135,16 @@ class GeminiClient:
             return response.text
             
         except Exception as e:
-            print(f"Error with Gemini API: {e}")
-            return f"I encountered an error while using my fallback AI service: {str(e)}. Please try again later."
+            error_message = str(e)
+            print(f"Error with Gemini API: {error_message}")
+            
+            # Check for specific API key errors
+            if "API_KEY_INVALID" in error_message or "API Key not found" in error_message:
+                return "I encountered an error with the Gemini API key configuration. Please verify the API key is valid and has the Generative Language API enabled in Google Cloud Console."
+            elif "quota" in error_message.lower() or "rate" in error_message.lower():
+                return "I've reached the API rate limit. Please wait a moment and try again."
+            else:
+                return f"I encountered an error while processing your request: {error_message}. Please try again later."
     
     def _is_likely_general_knowledge(self, prompt, database_data):
         """
